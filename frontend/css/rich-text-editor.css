@@ -1,0 +1,144 @@
+/* =============================================
+   Rich Text Editor — Inachis Admin
+   ============================================= */
+
+/* Container */
+.rte-wrapper {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* Tabs row */
+.rte-tabs {
+  display: flex;
+  flex-direction: row;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Tab button */
+.rte-tab {
+  padding: 0.5rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: color var(--transition), background var(--transition);
+}
+
+.rte-tab.active {
+  background: var(--white);
+  color: var(--violet);
+  border-bottom: 2px solid var(--gold);
+}
+
+/* Toolbar */
+.rte-toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.rte-toolbar button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.rte-toolbar button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* Content — contenteditable div */
+.rte-content {
+  min-height: 200px;
+  max-height: 500px;
+  padding: 1rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 300;
+  line-height: 1.65;
+  color: var(--ink);
+  outline: none;
+  overflow-y: auto;
+}
+
+.rte-content h1,
+.rte-content h2,
+.rte-content h3 {
+  font-family: var(--font-display);
+  color: var(--violet);
+}
+
+.rte-content blockquote {
+  border-left: 2px solid var(--gold);
+  padding-left: 1rem;
+  font-style: italic;
+  color: var(--violet-mid);
+}
+
+.rte-content a {
+  color: var(--violet-mid);
+  text-decoration: underline;
+}
+
+.rte-content ul {
+  margin-left: 1.5em;
+  list-style-type: disc;
+}
+
+.rte-content ol {
+  margin-left: 1.5em;
+  list-style-type: decimal;
+}
+
+/* Source — HTML textarea (hidden by default) */
+.rte-source {
+  display: none;
+  width: 100%;
+  min-height: 200px;
+  max-height: 500px;
+  border: none;
+  padding: 1rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+/* =============================================
+   Responsive YouTube Embed
+   ============================================= */
+
+.yt-embed {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+.yt-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}

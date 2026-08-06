@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrace — Kateřina Inachis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700;1,800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/rich-text-editor.css">
+  <style>
+    .lang-tabs { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .lang-tab { padding: 0.5rem 1rem; font-family: var(--font-body); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+    .lang-tab.active { color: var(--violet); border-bottom-color: var(--gold); }
+    .lang-tab:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <a href="/admin">Kateřina Inachis</a>
+      <div class="sidebar-role">Administrace</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-nav-section">Přehled</div>
+      <a href="#" data-section="overview" class="active">
+        <span class="nav-icon">◈</span> Přehled
+      </a>
+
+      <div class="sidebar-nav-section">Tvorba</div>
+      <a href="#" data-section="texts">
+        <span class="nav-icon">✦</span> Texty
+      </a>
+      <a href="#" data-section="artworks">
+        <span class="nav-icon">◈</span> Umění
+      </a>
+      <a href="#" data-section="jewelry">
+        <span class="nav-icon">◇</span> Kresba a malba
+      </a>
+      <a href="#" data-section="blog">
+        <span class="nav-icon">◉</span> Blog
+      </a>
+      <a href="#" data-section="programming">
+        <span class="nav-icon">⟨/⟩</span> Programování
+      </a>
+
+      <div class="sidebar-nav-section">Komunita</div>
+      <a href="#" data-section="friends">
+        <span class="nav-icon">❋</span> Přátelé
+      </a>
+      <a href="#" data-section="friendposts">
+        <span class="nav-icon">◌</span> Příspěvky přátel
+      </a>
+
+      <div class="sidebar-nav-section">Média</div>
+      <a href="#" data-section="gallery">
+        <span class="nav-icon">◰</span> Galerie
+      </a>
+
+      <div class="sidebar-nav-section">Systém</div>
+      <a href="#" data-section="settings">
+        <span class="nav-icon">⚙</span> Nastavení
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="/" target="_blank" style="font-family:var(--font-body);font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:0.06em;display:block;margin-bottom:0.5rem">
+        ↗ Zobrazit web
+      </a>
+      <button class="btn-logout" id="btnLogout">Odhlásit se</button>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <div class="admin-main">
+
+    <!-- Admin Header -->
+    <header class="admin-header">
+      <h1 class="admin-header__title" id="adminPageTitle">Přehled</h1>
+      <div class="admin-header__actions">
+        <a href="/" target="_blank" class="btn-admin btn-admin--outline btn-admin--sm">↗ Web</a>
+      </div>
+    </header>
+
+    <!-- Admin Content -->
+    <div class="admin-content">
+
+      <!-- ── Overview ───────────────────────────────────────── -->
+      <section id="overviewSection" class="admin-section active">
+        <!-- Filled by AdminController.renderOverview() -->
+      </section>
+
+      <!-- ── Texts ──────────────────────────────────────────── -->
+      <section id="textsSection" class="admin-section">
+        <div class="section-header">
+          <h2>Texty</h2>
+          <button class="btn-admin btn-admin--primary" onclick="window.admin.managers.texts?.showModal()">+ Přidat text</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Název</th>
+                <th>Kategorie</th>
+                <th>Status</th>
+                <th>Vybrané</th>
+                <th>Datum</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="textsTableBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Artworks ───────────────────────────────────────── -->
+      <section id="artworksSection" class="admin-section">
+        <div class="section-header">
+          <h2>Umění</h2>
+          <button class="btn-admin btn-admin--primary" onclick="window.admin.managers.artworks?.showModal()">+ Přidat dílo</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Název</th>
+                <th>Kolekce</th>
+                <th>Status</th>
+                <th>Vybrané</th>
+                <th>Pořadí</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="artworksTableBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Jewelry ────────────────────────────────────────── -->
+      <section id="jewelrySection" class="admin-section">
+        <div class="section-header">
+          <h2>Kresba a malba</h2>
+          <button class="btn-admin btn-admin--primary" onclick="window.admin.managers.jewelry?.showModal()">+ Přidat dílo</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Název</th>
+                <th>Kolekce</th>
+                <th>Dostupnost</th>
+                <th>Vybrané</th>
+                <th>Status</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="jewelryTableBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Blog ───────────────────────────────────────────── -->
+      <section id="blogSection" class="admin-section">
+        <div class="section-header">
+          <h2>Blog</h2>
+          <button class="btn-admin btn-admin--primary" onclick="window.admin.managers.blog?.showModal()">+ Nový záznam</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Název</th>
+                <th>Status</th>
+                <th>Vybrané</th>
+                <th>Datum</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="blogTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Programming ────────────────────────────────────── -->
+      <section id="programmingSection" class="admin-section">
+        <div class="section-header">
+          <h2>Programování</h2>
+          <button class="btn-admin btn-admin--primary" onclick="window.admin.managers.programming?.showModal()">+ Nový záznam</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Název</th>
+                <th>Status</th>
+                <th>Vybrané</th>
+                <th>Datum</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="programmingTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Friends ────────────────────────────────────────── -->
+      <section id="friendsSection" class="admin-section">
+        <div class="section-header">
+          <h2>Přátelé</h2>
+          <button class="btn-admin btn-admin--primary" onclick="window.admin.managers.friends?.showModal()">+ Přidat přítele</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Avatar</th>
+                <th>Jméno</th>
+                <th>Slug</th>
+                <th>Status</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="friendsTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Friend Posts ───────────────────────────────────── -->
+      <section id="friendpostsSection" class="admin-section">
+        <div class="section-header">
+          <h2>Příspěvky přátel</h2>
+          <button class="btn-admin btn-admin--primary" onclick="window.admin.managers.friendposts?.showModal()">+ Nový příspěvek</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Název</th>
+                <th>Přítel</th>
+                <th>Typ</th>
+                <th>Status</th>
+                <th>Datum</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="friendPostsTableBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Gallery ────────────────────────────────────────── -->
+      <section id="gallerySection" class="admin-section">
+        <div class="section-header">
+          <h2>Galerie</h2>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="btn-admin btn-admin--outline" onclick="window.admin.managers.gallery?.showFolderModal()">+ Složka</button>
+            <button class="btn-admin btn-admin--outline" onclick="window.admin.managers.gallery?.showImageModal()">+ Fotka (URL)</button>
+            <label class="btn-admin btn-admin--primary" style="cursor:pointer">
+              ↑ Nahrát
+              <input type="file" accept="image/*" multiple style="display:none" id="galleryUploadInput">
+            </label>
+          </div>
+        </div>
+
+        <div class="gallery-layout">
+          <!-- Folder Tree -->
+          <div class="gallery-sidebar">
+            <div class="gallery-sidebar__header">
+              <h4>Složky</h4>
+            </div>
+            <div class="folder-tree" id="galleryFolderTree">
+              <div style="padding:1rem;color:var(--ink-dim);font-size:0.82rem">Načítám…</div>
+            </div>
+          </div>
+
+          <!-- Images Panel -->
+          <div class="gallery-main">
+            <div class="gallery-main__header">
+              <div class="gallery-search">
+                <input type="text" class="form-input" id="gallerySearchInput" placeholder="Hledat podle identifieru…">
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Náhled</th>
+                    <th>Identifier</th>
+                    <th>Název</th>
+                    <th>Složka</th>
+                    <th>Akce</th>
+                  </tr>
+                </thead>
+                <tbody id="galleryImagesTableBody">
+                  <tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Settings ───────────────────────────────────────── -->
+      <section id="settingsSection" class="admin-section">
+        <div class="section-header">
+          <h2>Nastavení</h2>
+        </div>
+        <div style="max-width:640px">
+          <div class="admin-table-wrapper" style="padding:1.5rem">
+            <form id="settingsForm">
+              <div style="text-align:center;color:var(--ink-dim);font-size:0.85rem">Načítám…</div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /admin-content -->
+  </div><!-- /admin-main -->
+</div><!-- /admin-layout -->
+
+<!-- ── Toast ─────────────────────────────────────────────────── -->
+<div class="admin-toast" id="adminToast"></div>
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- Texts Modal -->
+<div class="modal-overlay hidden" id="textsModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="textsModalTitle">Nový text</h3>
+      <button class="modal-close" onclick="document.getElementById('textsModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="textsForm">
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Název <span class="required">*</span></label>
+            <input class="form-input" type="text" name="title" required placeholder="Název textu">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Kategorie</label>
+            <select class="form-input" name="category">
+              <option value="">— bez kategorie —</option>
+              <option value="Knihy">Knihy</option>
+              <option value="Povídky">Povídky</option>
+              <option value="Básně">Básně</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Obsah</label>
+            <textarea class="form-textarea form-textarea--tall" name="content" placeholder="Plný text"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Title (EN)</label>
+            <input class="form-input" type="text" name="title_en" placeholder="Title (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content (EN)</label>
+            <textarea class="form-textarea form-textarea--tall" name="content_en" placeholder="Content (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover obrázek</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="cover_image" id="txtCoverImage" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('txtCoverImage')">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Pořadí</label>
+            <input class="form-input" type="number" name="sort_order" value="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Datum publikace</label>
+            <input class="form-input" type="datetime-local" name="published_at">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;gap:1.5rem;padding-bottom:0.2rem">
+            <div class="form-check">
+              <input type="checkbox" name="is_featured" id="txtFeatured">
+              <label for="txtFeatured">Vybrané</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" name="is_published" id="txtPublished" checked>
+              <label for="txtPublished">Publikovat</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem -0 -1.5rem;padding:1rem 1.5rem 0">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('textsModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Artworks Modal -->
+<div class="modal-overlay hidden" id="artworksModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="artworksModalTitle">Nové dílo</h3>
+      <button class="modal-close" onclick="document.getElementById('artworksModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="artworksForm">
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Název <span class="required">*</span></label>
+            <input class="form-input" type="text" name="title" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Popis</label>
+            <textarea class="form-textarea" name="description" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Název (EN)</label>
+            <input class="form-input" type="text" name="title_en" placeholder="Title (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Popis (EN)</label>
+            <textarea class="form-textarea" name="description_en" rows="3" placeholder="Description (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Kolekce</label>
+            <input class="form-input" type="text" name="collection">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Médium</label>
+            <input class="form-input" type="text" name="medium" placeholder="olej, akryl…">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Rok</label>
+            <input class="form-input" type="text" name="year" placeholder="2024">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pořadí</label>
+            <input class="form-input" type="number" name="sort_order" value="0" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover obrázek</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="cover_image" id="artCoverImage" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('artCoverImage')">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Obrázky (JSON pole URL)</label>
+          <div class="input-with-btn">
+            <textarea class="form-textarea" name="images_json" id="artImagesJson" rows="3" placeholder='["https://…", "https://…"]'></textarea>
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('artImagesJson', true)">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-group" style="display:flex;gap:1.5rem">
+          <div class="form-check">
+            <input type="checkbox" name="is_featured" id="artFeatured">
+            <label for="artFeatured">Vybrané</label>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="is_published" id="artPublished">
+            <label for="artPublished">Publikovat</label>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('artworksModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Jewelry Modal -->
+<div class="modal-overlay hidden" id="jewelryModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="jewelryModalTitle">Nový šperk</h3>
+      <button class="modal-close" onclick="document.getElementById('jewelryModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="jewelryForm">
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Název <span class="required">*</span></label>
+            <input class="form-input" type="text" name="title" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Popis</label>
+            <textarea class="form-textarea" name="description" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Název (EN)</label>
+            <input class="form-input" type="text" name="title_en" placeholder="Title (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Popis (EN)</label>
+            <textarea class="form-textarea" name="description_en" rows="3" placeholder="Description (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Kolekce</label>
+            <input class="form-input" type="text" name="collection">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Materiály</label>
+            <input class="form-input" type="text" name="materials" placeholder="zlato, stříbro…">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rozměry</label>
+          <input class="form-input" type="text" name="dimensions" placeholder="např. 3 × 2 cm">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover obrázek</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="cover_image" id="jewCoverImage" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('jewCoverImage')">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Obrázky (JSON pole URL)</label>
+          <div class="input-with-btn">
+            <textarea class="form-textarea" name="images_json" id="jewImagesJson" rows="3" placeholder='["https://…"]'></textarea>
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('jewImagesJson', true)">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-group" style="display:flex;gap:1.5rem;flex-wrap:wrap">
+          <div class="form-check">
+            <input type="checkbox" name="is_available" id="jewAvailable" checked>
+            <label for="jewAvailable">Dostupné</label>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="is_featured" id="jewFeatured">
+            <label for="jewFeatured">Vybrané</label>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="is_published" id="jewPublished">
+            <label for="jewPublished">Publikovat</label>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('jewelryModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Blog Modal -->
+<div class="modal-overlay hidden" id="blogModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="blogModalTitle">Nový záznam</h3>
+      <button class="modal-close" onclick="document.getElementById('blogModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="blogForm">
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Název <span class="required">*</span></label>
+            <input class="form-input" type="text" name="title" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Obsah</label>
+            <textarea class="form-textarea form-textarea--tall" name="content"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Title (EN)</label>
+            <input class="form-input" type="text" name="title_en" placeholder="Title (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content (EN)</label>
+            <textarea class="form-textarea form-textarea--tall" name="content_en" placeholder="Content (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover obrázek</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="cover_image" id="blogCoverImage" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('blogCoverImage')">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Datum publikace</label>
+            <input class="form-input" type="datetime-local" name="published_at">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;gap:1.5rem;padding-bottom:0.2rem">
+            <div class="form-check">
+              <input type="checkbox" name="is_featured" id="blogFeatured">
+              <label for="blogFeatured">Vybrané</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" name="is_published" id="blogPublished" checked>
+              <label for="blogPublished">Publikovat</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('blogModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Programming Modal -->
+<div class="modal-overlay hidden" id="programmingModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="programmingModalTitle">Nový záznam</h3>
+      <button class="modal-close" onclick="document.getElementById('programmingModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="programmingForm">
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Název <span class="required">*</span></label>
+            <input class="form-input" type="text" name="title" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Obsah</label>
+            <textarea class="form-textarea form-textarea--tall" name="content"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Title (EN)</label>
+            <input class="form-input" type="text" name="title_en" placeholder="Title (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content (EN)</label>
+            <textarea class="form-textarea form-textarea--tall" name="content_en" placeholder="Content (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover obrázek</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="cover_image" id="programmingCoverImage" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('programmingCoverImage')">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Datum publikace</label>
+            <input class="form-input" type="datetime-local" name="published_at">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;gap:1.5rem;padding-bottom:0.2rem">
+            <div class="form-check">
+              <input type="checkbox" name="is_featured" id="programmingFeatured">
+              <label for="programmingFeatured">Vybrané</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" name="is_published" id="programmingPublished" checked>
+              <label for="programmingPublished">Publikovat</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('programmingModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Friends Modal -->
+<div class="modal-overlay hidden" id="friendsModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="friendsModalTitle">Nový přítel</h3>
+      <button class="modal-close" onclick="document.getElementById('friendsModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="friendsForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Jméno <span class="required">*</span></label>
+            <input class="form-input" type="text" name="name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Slug</label>
+            <input class="form-input" type="text" name="slug" placeholder="auto z jména">
+          </div>
+        </div>
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Krátký popis</label>
+            <input class="form-input" type="text" name="short_bio" placeholder="Jedna věta…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bio (delší popis)</label>
+            <textarea class="form-textarea" name="bio" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Krátký popis (EN)</label>
+            <input class="form-input" type="text" name="short_bio_en" placeholder="Short bio (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bio (EN)</label>
+            <textarea class="form-textarea" name="bio_en" rows="4" placeholder="Bio (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Avatar</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="avatar" id="friendAvatar" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('friendAvatar')">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Pořadí zobrazení</label>
+            <input class="form-input" type="number" name="display_order" value="0" min="0">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:0.2rem">
+            <div class="form-check">
+              <input type="checkbox" name="is_active" id="friendActive" checked>
+              <label for="friendActive">Aktivní</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('friendsModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Friend Posts Modal -->
+<div class="modal-overlay hidden" id="friendPostsModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="friendPostsModalTitle">Nový příspěvek</h3>
+      <button class="modal-close" onclick="document.getElementById('friendPostsModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="friendPostsForm">
+        <div class="form-group">
+          <label class="form-label">Přítel <span class="required">*</span></label>
+          <select class="form-select" name="friend_id" required>
+            <option value="">-- Vyberte přítele --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Typ</label>
+            <select class="form-select" name="type">
+              <option value="text">Text</option>
+              <option value="image">Obrázek</option>
+              <option value="mixed">Kombinovaný</option>
+            </select>
+          </div>
+        </div>
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Název <span class="required">*</span></label>
+            <input class="form-input" type="text" name="title" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Obsah</label>
+            <textarea class="form-textarea form-textarea--tall" name="content"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Title (EN)</label>
+            <input class="form-input" type="text" name="title_en" placeholder="Title (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content (EN)</label>
+            <textarea class="form-textarea form-textarea--tall" name="content_en" placeholder="Content (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover obrázek</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="cover_image" id="fpCoverImage" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('fpCoverImage')">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Obrázky (JSON pole)</label>
+          <div class="input-with-btn">
+            <textarea class="form-textarea" name="images_json" id="fpImagesJson" rows="2" placeholder='["https://…"]'></textarea>
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('fpImagesJson', true)">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Datum publikace</label>
+            <input class="form-input" type="datetime-local" name="published_at">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:0.2rem">
+            <div class="form-check">
+              <input type="checkbox" name="is_published" id="fpPublished" checked>
+              <label for="fpPublished">Publikovat</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:1rem -1.5rem 0;padding:1rem 1.5rem 0;border-top:1px solid var(--border)">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('friendPostsModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Friend Login Modal -->
+<div class="modal-overlay hidden" id="friendLoginModalOverlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="friendLoginModalTitle">Nastavit přihlášení</h3>
+      <button class="modal-close" onclick="document.getElementById('friendLoginModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="friendLoginCurrentEmail" style="font-size:0.82rem;color:var(--ink-dim);margin-bottom:1rem"></p>
+      <form id="friendLoginForm">
+        <div class="form-group">
+          <label class="form-label">E-mail <span class="required">*</span></label>
+          <input class="form-input" type="email" name="login_email" required placeholder="friend@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nové heslo <span class="required">*</span></label>
+          <input class="form-input" type="password" name="login_password" required placeholder="min. 8 znaků" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Potvrdit heslo <span class="required">*</span></label>
+          <input class="form-input" type="password" name="login_confirm" required placeholder="opakujte heslo" autocomplete="new-password">
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0;border-top:1px solid var(--border)">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('friendLoginModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit přihlášení</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Gallery Folder Modal -->
+<div class="modal-overlay hidden" id="galleryFolderModalOverlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="galleryFolderModalTitle">Nová složka</h3>
+      <button class="modal-close" onclick="document.getElementById('galleryFolderModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="galleryFolderForm">
+        <div class="form-group">
+          <label class="form-label">Název <span class="required">*</span></label>
+          <input class="form-input" type="text" name="folderName" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Slug</label>
+          <input class="form-input" type="text" name="folderSlug" placeholder="auto z názvu">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nadřazená složka</label>
+          <select class="form-select" name="folderParent">
+            <option value="">— Žádný nadřazený (kořen) —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pořadí</label>
+          <input class="form-input" type="number" name="folderOrder" value="0" min="0">
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0;border-top:1px solid var(--border)">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('galleryFolderModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Gallery Image (URL) Modal -->
+<div class="modal-overlay hidden" id="galleryImageModalOverlay">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="galleryImageModalTitle">Nová fotka</h3>
+      <button class="modal-close" onclick="document.getElementById('galleryImageModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="galleryImageForm">
+        <div class="form-group">
+          <label class="form-label">URL obrázku <span class="required">*</span></label>
+          <input class="form-input" type="text" name="imageUrl" required placeholder="https://… nebo /uploads/gallery/…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Identifier <span class="required">*</span></label>
+          <input class="form-input" type="text" name="imageIdentifier" required placeholder="moje-foto-001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Název</label>
+          <input class="form-input" type="text" name="imageTitle">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alt text</label>
+          <input class="form-input" type="text" name="imageAlt">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Složka</label>
+          <select class="form-select" name="imageFolder">
+            <option value="">— Kořen —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pořadí</label>
+          <input class="form-input" type="number" name="imageOrder" value="0" min="0">
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0;border-top:1px solid var(--border)">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('galleryImageModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Gallery Picker Modal -->
+<div class="modal-overlay hidden" id="galleryPickerModalOverlay">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h3>Vybrat z galerie</h3>
+      <button class="modal-close" onclick="document.getElementById('galleryPickerModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="gallery-picker-grid" id="galleryPickerGrid">
+        <div style="color:var(--ink-dim);font-size:0.85rem">Načítám…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-admin btn-admin--outline" onclick="document.getElementById('galleryPickerModalOverlay').classList.add('hidden')">Zavřít</button>
+      <button class="btn-admin btn-admin--primary" id="galleryPickerConfirm" style="display:none">Potvrdit výběr</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Gallery Upload Handler ──────────────────────────────── -->
+<script>
+  document.getElementById('galleryUploadInput')?.addEventListener('change', async (e) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    if (window.admin?.managers?.gallery) {
+      await window.admin.managers.gallery.doUpload(files);
+    }
+    e.target.value = '';
+  });
+</script>
+
+<script>
+  // Lang tab switching for admin modals
+  document.addEventListener('click', (e) => {
+    const tab = e.target.closest('.lang-tab');
+    if (!tab) return;
+    const pane = tab.dataset.langPane;
+    const container = tab.closest('.modal-body') || tab.closest('form');
+    if (!container) return;
+    // Update tabs
+    tab.parentElement.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    // Show/hide panes
+    container.querySelectorAll('.lang-pane--cs').forEach(el => el.style.display = pane === 'cs' ? '' : 'none');
+    container.querySelectorAll('.lang-pane--en').forEach(el => el.style.display = pane === 'en' ? '' : 'none');
+  });
+</script>
+<script src="/js/rich-text-editor.js"></script>
+<script type="module" src="/js/admin.js"></script>
+</body>
+</html>

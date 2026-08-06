@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Kateřina Inachis — osobní kreativní platforma">
+  <title>Kateřina Inachis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700;1,800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/public.css">
+</head>
+<body>
+
+  <!-- ── Site Header ───────────────────────────────────────── -->
+  <header class="site-header" id="siteHeader">
+    <div class="site-header__inner">
+      <a href="/" class="site-logo">Kateřina Inachis</a>
+
+      <nav class="nav-menu" id="desktopNav">
+        <div class="nav-item nav-item--dropdown">
+          <a href="/texty" data-i18n="nav.texts">Texty</a>
+          <div class="nav-dropdown">
+            <a href="/texty/knihy" data-i18n="nav.books">Knihy</a>
+            <a href="/texty/povidky" data-i18n="nav.stories">Povídky</a>
+            <a href="/texty/basne" data-i18n="nav.poems">Básně</a>
+          </div>
+        </div>
+        <a href="/kresba" data-i18n="nav.drawing">Kresba a malba</a>
+        <a href="/blog" data-i18n="nav.blog">Blog</a>
+        <a href="/programovani" data-i18n="nav.programming">Programování</a>
+        <a href="/pratele" data-i18n="nav.friends">Přátelé</a>
+        <a href="/o-mne" data-i18n="nav.about">O mně</a>
+        <a href="/kontakt" data-i18n="nav.contact">Kontakt</a>
+      </nav>
+
+      <button class="lang-toggle" id="langToggle" onclick="if(window.setLang){window.setLang(window.getLang()==='cs'?'en':'cs');location.reload()}">EN</button>
+      <button class="nav-hamburger" id="navHamburger" aria-label="Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Nav -->
+  <nav class="nav-mobile" id="mobileNav">
+    <a href="/" onclick="document.getElementById('mobileNav').classList.remove('open')" data-i18n="nav.home">Domů</a>
+    <a href="/texty" data-i18n="nav.texts">Texty</a>
+    <a href="/texty/knihy" class="nav-mobile-sub" data-i18n="nav.books">Knihy</a>
+    <a href="/texty/povidky" class="nav-mobile-sub" data-i18n="nav.stories">Povídky</a>
+    <a href="/texty/basne" class="nav-mobile-sub" data-i18n="nav.poems">Básně</a>
+    <a href="/kresba" data-i18n="nav.drawing">Kresba a malba</a>
+    <a href="/blog" data-i18n="nav.blog">Blog</a>
+    <a href="/programovani" data-i18n="nav.programming">Programování</a>
+    <a href="/pratele" data-i18n="nav.friends">Přátelé</a>
+    <a href="/o-mne" data-i18n="nav.about">O mně</a>
+    <a href="/kontakt" data-i18n="nav.contact">Kontakt</a>
+  </nav>
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <section class="hero" id="hero">
+    <div class="hero__bg" id="heroBg" style="background-color: var(--violet)"></div>
+    <div class="hero__content">
+      <div class="hero__ornament"></div>
+      <h1 class="hero__title" id="heroTitle">Kateřina Inachis</h1>
+      <p class="hero__subtitle" id="heroSubtitle">Creative Portfolio</p>
+      <a href="/texty" class="btn btn-gold" data-i18n="home.explore">Prozkoumat tvorbu</a>
+    </div>
+    <div class="hero__scroll" data-i18n="hero.scroll">
+      Scroll
+    </div>
+  </section>
+
+  <!-- ── SPA Content ───────────────────────────────────────── -->
+  <main id="app"></main>
+
+  <!-- ── Footer ───────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <div class="site-footer__top">
+        <div class="footer-brand">
+          <a href="/" class="site-logo">Kateřina Inachis</a>
+          <p data-i18n="footer.description">Osobní kreativní platforma — texty, umění, kresba a malba a přátelé.</p>
+          <div class="footer-social" id="footerSocial"></div>
+        </div>
+        <nav class="footer-nav">
+          <h4 data-i18n="footer.creation">Tvorba</h4>
+          <ul>
+            <li><a href="/texty" data-i18n="nav.texts">Texty</a></li>
+            <li><a href="/kresba" data-i18n="nav.drawing">Kresba a malba</a></li>
+            <li><a href="/blog" data-i18n="nav.blog">Blog</a></li>
+            <li><a href="/programovani" data-i18n="nav.programming">Programování</a></li>
+          </ul>
+        </nav>
+        <nav class="footer-nav">
+          <h4 data-i18n="footer.personal">Osobní</h4>
+          <ul>
+            <li><a href="/pratele" data-i18n="nav.friends">Přátelé</a></li>
+            <li><a href="/o-mne" data-i18n="nav.about">O mně</a></li>
+            <li><a href="/kontakt" data-i18n="nav.contact">Kontakt</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="site-footer__bottom">
+        <span class="footer-copy" id="footerCopy">&copy; <script>document.write(new Date().getFullYear())</script> Kateřina Inachis. Všechna práva vyhrazena.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/carousel.js"></script>
+  <script src="/js/i18n.js"></script>
+  <script type="module" src="/js/public.js"></script>
+  <script>
+    // Load footer settings
+    fetch('/api/settings/public')
+      .then(r => r.json())
+      .then(s => {
+        if (s.site_name) document.title = s.site_name;
+        // Logo
+        if (s.site_logo) {
+          document.querySelectorAll('.site-logo').forEach(el => {
+            el.innerHTML = '<img src="' + s.site_logo.replace(/"/g, '&quot;') + '" alt="' + (s.site_name || 'Logo').replace(/"/g, '&quot;') + '" class="site-logo-img">';
+          });
+        }
+        const social = document.getElementById('footerSocial');
+        if (social) {
+          let html = '';
+          if (s.social_instagram) html += `<a href="${s.social_instagram}" target="_blank" rel="noopener" aria-label="Instagram">IG</a>`;
+          if (s.social_twitter)   html += `<a href="${s.social_twitter}" target="_blank" rel="noopener" aria-label="Twitter">TW</a>`;
+          social.innerHTML = html;
+        }
+        const copy = document.getElementById('footerCopy');
+        if (copy && s.site_name) {
+          copy.innerHTML = `&copy; ${new Date().getFullYear()} ${s.site_name}. Všechna práva vyhrazena.`;
+        }
+        // Store settings globally for i18n
+        window.__inachisSettings = s;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

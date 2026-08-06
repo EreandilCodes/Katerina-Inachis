@@ -1,0 +1,7 @@
+node_modules/
+.env
+backend/inachis.db
+backend/inachis.db-shm
+backend/inachis.db-wal
+frontend/uploads/
+*.log

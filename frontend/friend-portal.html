@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portál přátel — Kateřina Inachis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700;1,800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/rich-text-editor.css">
+  <style>
+    .lang-tabs { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .lang-tab { padding: 0.5rem 1rem; font-family: var(--font-body); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+    .lang-tab.active { color: var(--violet); border-bottom-color: var(--gold); }
+    .lang-tab:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────── -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <a href="/friend-portal">Kateřina Inachis</a>
+      <div class="sidebar-role">Portál přátel</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="sidebar-nav-section">Obsah</div>
+      <a href="#" data-section="posts" class="active">
+        <span class="nav-icon">◌</span> Moje příspěvky
+      </a>
+      <a href="#" data-section="gallery">
+        <span class="nav-icon">◫</span> Má galerie
+      </a>
+      <a href="#" data-section="profile">
+        <span class="nav-icon">◉</span> Můj profil
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="/" target="_blank" style="font-family:var(--font-body);font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:0.06em;display:block;margin-bottom:0.5rem">
+        ↗ Zobrazit web
+      </a>
+      <button class="btn-logout" id="btnLogout">Odhlásit se</button>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <div class="admin-main">
+
+    <!-- Header -->
+    <header class="admin-header">
+      <h1 class="admin-header__title" id="portalPageTitle">Moje příspěvky</h1>
+      <div class="admin-header__actions">
+        <a href="/" target="_blank" class="btn-admin btn-admin--outline btn-admin--sm">↗ Web</a>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="admin-content">
+
+      <!-- ── Posts section ──────────────────────────────── -->
+      <section id="postsSection" class="admin-section active">
+        <div class="section-header">
+          <h2>Moje příspěvky</h2>
+          <button class="btn-admin btn-admin--primary" id="btnNewPost">+ Nový příspěvek</button>
+        </div>
+        <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Název</th>
+                <th>Typ</th>
+                <th>Status</th>
+                <th>Datum</th>
+                <th>Akce</th>
+              </tr>
+            </thead>
+            <tbody id="postsTableBody">
+              <tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Gallery section ────────────────────────────── -->
+      <section id="gallerySection" class="admin-section">
+        <div class="section-header">
+          <h2>Má galerie</h2>
+          <label class="btn-admin btn-admin--primary" style="cursor:pointer">
+            + Nahrát fotky
+            <input type="file" id="galleryUploadInput" accept="image/*" multiple style="display:none">
+          </label>
+        </div>
+
+        <!-- Storage usage bar -->
+        <div style="max-width:480px;margin-bottom:1.5rem" id="galleryUsageBar">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--ink-dim);margin-bottom:0.4rem">
+            <span id="galleryUsageLabel">Načítám…</span>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div id="galleryUsageFill" style="height:100%;background:var(--violet-mid);border-radius:3px;width:0%;transition:width 0.3s"></div>
+          </div>
+        </div>
+
+        <!-- Upload progress -->
+        <div id="galleryUploadProgress" style="display:none;margin-bottom:1rem;font-size:0.85rem;color:var(--ink-dim)">Nahrávám…</div>
+
+        <!-- Image grid -->
+        <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem">
+          <div style="color:var(--ink-dim);font-size:0.85rem">Načítám…</div>
+        </div>
+      </section>
+
+      <!-- ── Profile section ────────────────────────────── -->
+      <section id="profileSection" class="admin-section">
+        <div class="section-header">
+          <h2>Můj profil</h2>
+        </div>
+
+        <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem">
+
+          <!-- Avatar card -->
+          <div class="admin-table-wrapper" style="padding:1.5rem">
+            <h3 style="font-family:var(--font-display);font-size:1.15rem;margin-bottom:1.25rem">Avatar</h3>
+            <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.25rem">
+              <div id="profileAvatarPreview" style="width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--violet-pale);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:1.5rem;color:var(--violet-mid);flex-shrink:0"></div>
+              <div style="flex:1">
+                <p style="font-size:0.82rem;color:var(--ink-dim);margin-bottom:0.5rem" id="profileName"></p>
+                <p style="font-size:0.78rem;color:var(--ink-dim)" id="profileEmail"></p>
+              </div>
+            </div>
+            <form id="avatarForm">
+              <div class="form-group">
+                <label class="form-label">URL avataru</label>
+                <div class="input-with-btn">
+                  <input class="form-input" type="text" name="avatar" id="profileAvatarInput" placeholder="https://… nebo z galerie">
+                  <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" id="btnPickAvatar">Z galerie</button>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end">
+                <button type="submit" class="btn-admin btn-admin--primary">Uložit avatar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Password card -->
+          <div class="admin-table-wrapper" style="padding:1.5rem">
+            <h3 style="font-family:var(--font-display);font-size:1.15rem;margin-bottom:1.25rem">Změna hesla</h3>
+            <form id="passwordForm">
+              <div class="form-group">
+                <label class="form-label">Stávající heslo</label>
+                <input class="form-input" type="password" name="current_password" required autocomplete="current-password" placeholder="••••••••">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nové heslo</label>
+                <input class="form-input" type="password" name="new_password" required autocomplete="new-password" placeholder="min. 8 znaků">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Potvrdit nové heslo</label>
+                <input class="form-input" type="password" name="confirm_password" required autocomplete="new-password" placeholder="opakujte heslo">
+              </div>
+              <div style="display:flex;justify-content:flex-end">
+                <button type="submit" class="btn-admin btn-admin--primary">Změnit heslo</button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ─────────────────────────────────────────────────── -->
+<div class="admin-toast" id="adminToast"></div>
+
+<!-- ── Post Modal ──────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="postModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="postModalTitle">Nový příspěvek</h3>
+      <button class="modal-close" onclick="document.getElementById('postModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="postForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Typ</label>
+            <select class="form-select" name="type">
+              <option value="text">Text</option>
+              <option value="image">Obrázek</option>
+              <option value="mixed">Kombinovaný</option>
+            </select>
+          </div>
+        </div>
+        <div class="lang-tabs">
+          <button type="button" class="lang-tab active" data-lang-pane="cs">Čeština</button>
+          <button type="button" class="lang-tab" data-lang-pane="en">English</button>
+        </div>
+        <div class="lang-pane lang-pane--cs">
+          <div class="form-group">
+            <label class="form-label">Název <span class="required">*</span></label>
+            <input class="form-input" type="text" name="title" required placeholder="Název příspěvku">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Obsah</label>
+            <textarea class="form-textarea form-textarea--tall" name="content" placeholder="Plný text"></textarea>
+          </div>
+        </div>
+        <div class="lang-pane lang-pane--en" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Title (EN)</label>
+            <input class="form-input" type="text" name="title_en" placeholder="Title (English)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content (EN)</label>
+            <textarea class="form-textarea form-textarea--tall" name="content_en" placeholder="Content (English)"></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cover obrázek</label>
+          <div class="input-with-btn">
+            <input class="form-input" type="text" name="cover_image" id="fpPortalCoverImage" placeholder="https://…">
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" id="btnPickPostCover">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Obrázky (JSON pole URL)</label>
+          <div class="input-with-btn">
+            <textarea class="form-textarea" name="images_json" id="fpPortalImagesJson" rows="2" placeholder='["https://…"]'></textarea>
+            <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" id="btnPickPostImages">Z galerie</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Datum publikace</label>
+            <input class="form-input" type="datetime-local" name="published_at">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:0.2rem">
+            <div class="form-check">
+              <input type="checkbox" name="is_published" id="fpPortalPublished" checked>
+              <label for="fpPortalPublished">Publikovat</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="margin:1rem -1.5rem 0;padding:1rem 1.5rem 0;border-top:1px solid var(--border)">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('postModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Gallery Picker Modal ────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="fpGalleryPickerOverlay">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h3>Vybrat z galerie</h3>
+      <button class="modal-close" onclick="document.getElementById('fpGalleryPickerOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="gallery-picker-grid" id="fpGalleryPickerGrid">
+        <div style="color:var(--ink-dim);font-size:0.85rem">Načítám…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-admin btn-admin--outline" onclick="document.getElementById('fpGalleryPickerOverlay').classList.add('hidden')">Zavřít</button>
+      <button class="btn-admin btn-admin--primary hidden" id="fpGalleryPickerConfirm">Potvrdit výběr</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Lang tab switching for portal modals
+  document.addEventListener('click', (e) => {
+    const tab = e.target.closest('.lang-tab');
+    if (!tab) return;
+    const pane = tab.dataset.langPane;
+    const container = tab.closest('.modal-body') || tab.closest('form');
+    if (!container) return;
+    tab.parentElement.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    container.querySelectorAll('.lang-pane--cs').forEach(el => el.style.display = pane === 'cs' ? '' : 'none');
+    container.querySelectorAll('.lang-pane--en').forEach(el => el.style.display = pane === 'en' ? '' : 'none');
+  });
+</script>
+<script src="/js/rich-text-editor.js"></script>
+<script type="module" src="/js/friend-portal.js"></script>
+</body>
+</html>

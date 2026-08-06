@@ -1,0 +1,1106 @@
+// ============================================================
+// Inachis — public.js
+// Full SPA with router, all public sections
+// ============================================================
+
+// ── XSS protection ───────────────────────────────────────────
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// ── Date formatter ────────────────────────────────────────────
+function fmtDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const locale = (window.getLang && window.getLang() === 'en') ? 'en-US' : 'cs-CZ';
+    return new Date(dateStr).toLocaleDateString(locale, {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+// ── i18n helpers ────────────────────────────────────────────────
+function langParam() {
+  const lang = window.getLang ? window.getLang() : 'cs';
+  return lang === 'en' ? '?lang=en' : '';
+}
+
+function updateStaticI18n() {
+  const t = window.t;
+  if (!t) return;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  const toggle = document.getElementById('langToggle');
+  if (toggle) {
+    const lang = window.getLang ? window.getLang() : 'cs';
+    toggle.textContent = lang === 'cs' ? 'EN' : 'CZ';
+  }
+}
+
+// ── Safe Fetch ────────────────────────────────────────────────
+async function safeFetch(url) {
+  const response = await fetch(url);
+  const contentType = response.headers.get('content-type');
+
+  if (!response.ok) {
+    const err = contentType?.includes('application/json')
+      ? await response.json()
+      : { error: await response.text() };
+    throw new Error(err.error || 'Request failed');
+  }
+
+  if (!contentType?.includes('application/json')) {
+    throw new Error('Server returned non-JSON response');
+  }
+
+  return await response.json();
+}
+
+// ============================================================
+// Router
+// ============================================================
+const app = {
+  currentPath: null,
+  pendingScroll: null,
+
+  navigate(path) {
+    if (path === this.currentPath && !this.pendingScroll) return;
+    history.pushState(null, '', path);
+    this.route(path);
+  },
+
+  route(path) {
+    this.currentPath = path;
+    this.updateNav(path);
+
+    // Show hero only on homepage
+    const hero = document.getElementById('hero');
+    if (hero) hero.style.display = (path === '/' || path === '') ? '' : 'none';
+
+    const segments = path.split('/').filter(Boolean);
+    const [s0, s1, s2] = segments;
+
+    if (!s0) return this.renderHomepage();
+
+    switch (s0) {
+      case 'texty':
+        if (!s1)             return this.renderTextsList();
+        if (s1 === 'knihy')  return this.renderTextsFiltered('Knihy',   (window.t || (k=>k))('nav.books'));
+        if (s1 === 'povidky') return this.renderTextsFiltered('Povídky', (window.t || (k=>k))('nav.stories'));
+        if (s1 === 'basne')  return this.renderTextsFiltered('Básně',   (window.t || (k=>k))('nav.poems'));
+        return this.renderTextDetail(s1);
+      case 'umeni':
+        return s1 ? this.renderArtworkDetail(s1) : this.renderArtworksList();
+      case 'kresba':
+        return s1 ? this.renderJewelryDetail(s1) : this.renderJewelryList();
+      case 'blog':
+        return s1 ? this.renderBlogPost(s1) : this.renderBlogList();
+      case 'programovani':
+        return s1 ? this.renderProgrammingPost(s1) : this.renderProgrammingList();
+      case 'pratele':
+        if (s1 && s2) return this.renderFriendPost(s1, s2);
+        if (s1) return this.renderFriendPage(s1);
+        return this.renderFriendsIndex();
+      case 'o-mne':
+        return this.renderAbout();
+      case 'kontakt':
+        return this.renderContact();
+      default:
+        return this.render404();
+    }
+  },
+
+  updateNav(path) {
+    document.querySelectorAll('.nav-menu a, .nav-mobile a, .nav-dropdown a').forEach(a => {
+      const href = a.getAttribute('href') || '';
+      const active = href !== '/'
+        ? path === href || path.startsWith(href + '/')
+        : path === '/';
+      a.classList.toggle('active', active);
+    });
+    // Mark parent Texty link active for any /texty/* path
+    document.querySelectorAll('.nav-item--dropdown > a').forEach(a => {
+      if (a.getAttribute('href') === '/texty' && path.startsWith('/texty')) {
+        a.classList.add('active');
+      }
+    });
+  },
+
+  setContent(html) {
+    document.getElementById('app').innerHTML = html;
+  },
+
+  showLoading() {
+    const t = window.t;
+    this.setContent(`<div class="loading-state">${t ? t('loading') : 'Načítám…'}</div>`);
+  }
+};
+
+// ── Section scroll mapping (nav path → homepage section id) ──
+const NAV_SECTION_MAP = {
+  '/texty':        'section-texts',
+  '/umeni':        'section-art',
+  '/kresba':       'section-drawing',
+  '/blog':         'section-blog',
+  '/programovani': 'section-programming',
+  '/pratele':      'section-friends',
+  '/o-mne':        'section-about',
+  '/kontakt':      'section-contact',
+};
+
+function scrollToSection(sectionId) {
+  const el = document.getElementById(sectionId);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
+  }
+  return false;
+}
+
+// ── Nav intercept ─────────────────────────────────────────────
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  const href = a.getAttribute('href');
+  if (!href || href.startsWith('http') || href.startsWith('#') || href.startsWith('mailto:')) return;
+  if (a.hasAttribute('target')) return;
+  e.preventDefault();
+  // Close mobile nav
+  document.getElementById('mobileNav')?.classList.remove('open');
+
+  // If on homepage and the link maps to a section, scroll instead of navigating
+  const sectionId = NAV_SECTION_MAP[href];
+  if (sectionId && (app.currentPath === '/' || app.currentPath === '')) {
+    scrollToSection(sectionId);
+    return;
+  }
+
+  // If not on homepage but href maps to a section, navigate home then scroll
+  if (sectionId && app.currentPath !== '/') {
+    app.pendingScroll = sectionId;
+    app.navigate('/');
+    return;
+  }
+
+  app.navigate(href);
+});
+
+window.addEventListener('popstate', () => app.route(location.pathname));
+
+// ── Hamburger ─────────────────────────────────────────────────
+document.getElementById('navHamburger')?.addEventListener('click', () => {
+  document.getElementById('mobileNav')?.classList.toggle('open');
+});
+
+// ── Header scroll ─────────────────────────────────────────────
+const header = document.getElementById('siteHeader');
+window.addEventListener('scroll', () => {
+  header?.classList.toggle('scrolled', window.scrollY > 20);
+}, { passive: true });
+
+// ============================================================
+// Homepage
+// ============================================================
+async function renderHomepage() {
+  app.showLoading();
+  try {
+    const lp = langParam();
+    const [settings, featuredTexts, featuredArtworks, featuredJewelry, friends, blogPosts, programmingPosts] = await Promise.allSettled([
+      safeFetch('/api/settings/public' + lp),
+      safeFetch('/api/texts/featured' + lp),
+      safeFetch('/api/artworks/featured' + lp),
+      safeFetch('/api/jewelry/featured' + lp),
+      safeFetch('/api/friends' + lp),
+      safeFetch('/api/blog' + lp),
+      safeFetch('/api/programming' + lp)
+    ]);
+
+    const s     = settings.value     || {};
+    const texts  = (featuredTexts.value  || []).slice(0, 3);
+    const arts   = (featuredArtworks.value || []).slice(0, 4);
+    const jewels = (featuredJewelry.value  || []).slice(0, 3);
+    const frds   = (friends.value    || []).slice(0, 4);
+    const blogs  = (blogPosts.value  || []).slice(0, 3);
+    const progs  = (programmingPosts.value || []).slice(0, 3);
+
+    // Update hero
+    const heroBg = document.getElementById('heroBg');
+    if (heroBg && s.hero_image) {
+      heroBg.style.backgroundImage = `url('${esc(s.hero_image)}')`;
+    }
+    const heroTitle = document.getElementById('heroTitle');
+    if (heroTitle) heroTitle.textContent = s.site_name || 'Kateřina Inachis';
+    const heroSubtitle = document.getElementById('heroSubtitle');
+    if (heroSubtitle) heroSubtitle.textContent = s.site_tagline || '';
+
+    const i = window.t || (k => k);
+    const html = `
+      ${texts.length ? `
+      <section id="section-texts" class="section section--alt">
+        <div class="section-inner">
+          <div class="section-header">
+            <h2 class="section-title">${i('home.section.texts')}</h2>
+            <hr class="ornament-line">
+          </div>
+          <div class="content-grid content-grid--3">
+            ${texts.map(t => renderTextCard(t)).join('')}
+          </div>
+          <div style="text-align:center;margin-top:2.5rem">
+            <a href="/texty" class="btn btn-ghost">${i('home.allTexts')}</a>
+          </div>
+        </div>
+      </section>` : ''}
+
+      ${arts.length ? `
+      <section id="section-art" class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h2 class="section-title">${i('home.section.art')}</h2>
+            <hr class="ornament-line">
+          </div>
+          <div class="gallery-grid">
+            ${arts.map(a => renderArtworkGalleryItem(a)).join('')}
+          </div>
+          <div style="text-align:center;margin-top:2.5rem">
+            <a href="/umeni" class="btn btn-ghost">${i('home.fullGallery')}</a>
+          </div>
+        </div>
+      </section>` : ''}
+
+      ${jewels.length ? `
+      <section id="section-drawing" class="section section--dark">
+        <div class="section-inner">
+          <div class="section-header">
+            <h2 class="section-title">${i('home.section.drawing')}</h2>
+            <hr class="ornament-line">
+          </div>
+          <div class="jewelry-grid">
+            ${jewels.map(j => renderJewelryItem(j)).join('')}
+          </div>
+          <div style="text-align:center;margin-top:2.5rem">
+            <a href="/kresba" class="btn btn-ghost">${i('home.viewAll')}</a>
+          </div>
+        </div>
+      </section>` : ''}
+
+      ${frds.length ? `
+      <section id="section-friends" class="section section--alt">
+        <div class="section-inner">
+          <div class="section-header">
+            <h2 class="section-title">${i('home.section.friends')}</h2>
+            <hr class="ornament-line">
+            <p class="section-subtitle">${i('home.friendsSubtitle')}</p>
+          </div>
+          <div class="friend-grid">
+            ${frds.map(f => renderFriendCard(f)).join('')}
+          </div>
+          <div style="text-align:center;margin-top:2.5rem">
+            <a href="/pratele" class="btn btn-ghost">${i('home.allFriends')}</a>
+          </div>
+        </div>
+      </section>` : ''}
+
+      ${blogs.length ? `
+      <section id="section-blog" class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h2 class="section-title">${i('home.section.blog')}</h2>
+            <hr class="ornament-line">
+          </div>
+          <div class="content-grid content-grid--3">
+            ${blogs.map(b => renderBlogCard(b)).join('')}
+          </div>
+          <div style="text-align:center;margin-top:2.5rem">
+            <a href="/blog" class="btn btn-ghost">${i('home.allPosts')}</a>
+          </div>
+        </div>
+      </section>` : ''}
+
+      ${progs.length ? `
+      <section id="section-programming" class="section section--alt">
+        <div class="section-inner">
+          <div class="section-header">
+            <h2 class="section-title">${i('home.section.programming')}</h2>
+            <hr class="ornament-line">
+          </div>
+          <div class="content-grid content-grid--3">
+            ${progs.map(b => renderProgrammingCard(b)).join('')}
+          </div>
+          <div style="text-align:center;margin-top:2.5rem">
+            <a href="/programovani" class="btn btn-ghost">${i('home.allProgramming')}</a>
+          </div>
+        </div>
+      </section>` : ''}
+
+      ${s.about_text ? `
+      <section id="section-about" class="section section--alt">
+        <div class="section-inner">
+          <div class="about-split">
+            ${s.about_image ? `
+            <div class="about-image">
+              <img src="${esc(s.about_image)}" alt="${esc(s.owner_name || i('nav.about'))}">
+            </div>` : ''}
+            <div class="about-text">
+              <span class="category-label">${i('nav.about')}</span>
+              <h2 class="section-title" style="text-align:left;margin-top:0.5rem">${esc(s.owner_name || '')}</h2>
+              <hr class="ornament-line ornament-line--left">
+              <p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);line-height:1.75;margin-bottom:1.5rem">${esc(s.about_text)}</p>
+              <a href="/o-mne" class="btn btn-ghost">${i('home.moreAbout')}</a>
+            </div>
+          </div>
+        </div>
+      </section>` : ''}
+
+      <section id="section-contact" class="section">
+        <div class="section-inner">
+          <div class="contact-section" style="text-align:center">
+            <span class="category-label">${i('nav.contact')}</span>
+            <h2 class="section-title" style="margin-top:0.5rem">${i('home.letsConnect')}</h2>
+            <hr class="ornament-line">
+            <p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);margin-bottom:2rem;max-width:480px;margin-left:auto;margin-right:auto">
+              ${i('home.contactDescription')}
+            </p>
+            <a href="/kontakt" class="btn btn-primary">${i('home.writeMessage')}</a>
+          </div>
+        </div>
+      </section>
+    `;
+
+    app.setContent(html);
+
+    // Handle pending scroll from nav click
+    if (app.pendingScroll) {
+      const sid = app.pendingScroll;
+      app.pendingScroll = null;
+      requestAnimationFrame(() => scrollToSection(sid));
+    }
+  } catch (err) {
+    const i = window.t || (k => k);
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.loading')}</h3><p>${esc(err.message)}</p></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Card renderers
+// ============================================================
+function renderTextCard(t) {
+  return `
+    <div class="card" onclick="app.navigate('/texty/${esc(t.slug)}')">
+      ${t.cover_image ? `<div class="card-img"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}" loading="lazy"></div>` : ''}
+      <div class="card-body">
+        ${t.category ? `<span class="card-category">${esc(t.category)}</span>` : ''}
+        <h3 class="card-title">${esc(t.title)}</h3>
+        ${t.excerpt ? `<p class="card-excerpt">${esc(t.excerpt)}</p>` : ''}
+        <div class="card-meta">${fmtDate(t.published_at || t.created_at)}</div>
+      </div>
+    </div>`;
+}
+
+function renderArtworkGalleryItem(a) {
+  return `
+    <div class="gallery-item" onclick="app.navigate('/umeni/${esc(a.slug)}')">
+      ${a.cover_image ? `<img src="${esc(a.cover_image)}" alt="${esc(a.title)}" loading="lazy">` : '<div style="width:100%;height:100%;background:var(--bg-section)"></div>'}
+      <div class="gallery-item__overlay">
+        <div>
+          ${a.collection ? `<div style="font-family:var(--font-display);font-style:italic;font-size:0.72rem;color:var(--gold);letter-spacing:0.1em">${esc(a.collection)}</div>` : ''}
+          <div class="gallery-item__title">${esc(a.title)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderJewelryItem(j) {
+  return `
+    <div class="jewelry-item" onclick="app.navigate('/kresba/${esc(j.slug)}')">
+      <div class="jewelry-item__img">
+        ${j.cover_image ? `<img src="${esc(j.cover_image)}" alt="${esc(j.title)}" loading="lazy">` : ''}
+      </div>
+      <div class="jewelry-item__body">
+        ${j.collection ? `<span class="jewelry-item__collection">${esc(j.collection)}</span>` : ''}
+        <div class="jewelry-item__title">${esc(j.title)}</div>
+        ${j.materials ? `<div class="jewelry-item__materials">${esc(j.materials)}</div>` : ''}
+        <span class="jewelry-badge ${j.is_available ? 'jewelry-badge--available' : 'jewelry-badge--unavailable'}">
+          ${j.is_available ? (window.t ? window.t('jewelry.available') : 'Dostupné') : (window.t ? window.t('jewelry.unavailable') : 'Nedostupné')}
+        </span>
+      </div>
+    </div>`;
+}
+
+function renderFriendCard(f) {
+  const initials = esc(f.name).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  return `
+    <div class="friend-card" onclick="app.navigate('/pratele/${esc(f.slug)}')">
+      ${f.avatar
+        ? `<img src="${esc(f.avatar)}" alt="${esc(f.name)}" class="friend-avatar" loading="lazy">`
+        : `<div class="friend-avatar-placeholder">${initials}</div>`}
+      <div class="friend-name">${esc(f.name)}</div>
+      ${f.short_bio ? `<div class="friend-bio">${esc(f.short_bio)}</div>` : ''}
+    </div>`;
+}
+
+function renderBlogCard(b) {
+  return `
+    <div class="card" onclick="app.navigate('/blog/${esc(b.slug)}')">
+      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
+      <div class="card-body">
+        <span class="card-category">Blog</span>
+        <h3 class="card-title">${esc(b.title)}</h3>
+        ${b.excerpt ? `<p class="card-excerpt">${esc(b.excerpt)}</p>` : ''}
+        <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
+      </div>
+    </div>`;
+}
+
+function renderProgrammingCard(b) {
+  const i = window.t || (k => k);
+  return `
+    <div class="card" onclick="app.navigate('/programovani/${esc(b.slug)}')">
+      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
+      <div class="card-body">
+        <span class="card-category">${i('nav.programming')}</span>
+        <h3 class="card-title">${esc(b.title)}</h3>
+        ${b.excerpt ? `<p class="card-excerpt">${esc(b.excerpt)}</p>` : ''}
+        <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// Texts section
+// ============================================================
+async function renderTextsList() {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const items = await safeFetch('/api/texts' + langParam());
+    if (!items.length) {
+      return app.setContent(`
+        <div class="detail-page">
+          <div class="detail-page__inner">
+            <div class="empty-state"><h3>${i('empty.texts')}</h3><p>${i('empty.textsDesc')}</p></div>
+          </div>
+        </div>`);
+    }
+
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">${i('nav.texts')}</h1>
+            <hr class="ornament-line">
+          </div>
+          <div class="content-grid content-grid--3">
+            ${items.map(t => renderTextCard(t)).join('')}
+          </div>
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3><p>${esc(err.message)}</p></div></div></div>`);
+  }
+}
+
+async function renderTextsFiltered(category, label) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const catParam = `category=${encodeURIComponent(category)}`;
+    const lp = langParam();
+    const url = lp ? `/api/texts${lp}&${catParam}` : `/api/texts?${catParam}`;
+    const items = await safeFetch(url);
+    if (!items.length) {
+      return app.setContent(`
+        <div class="detail-page">
+          <div class="detail-page__inner">
+            <a href="/texty" class="back-link">${i('back.texts')}</a>
+            <div class="empty-state"><h3>${i('empty.category', { label: esc(label) })}</h3><p>${i('empty.categoryDesc')}</p></div>
+          </div>
+        </div>`);
+    }
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">${esc(label)}</h1>
+            <hr class="ornament-line">
+          </div>
+          <div class="content-grid content-grid--3">
+            ${items.map(t => renderTextCard(t)).join('')}
+          </div>
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3><p>${esc(err.message)}</p></div></div></div>`);
+  }
+}
+
+async function renderTextDetail(slug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const t = await safeFetch(`/api/texts/${encodeURIComponent(slug)}` + langParam());
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <a href="/texty" class="back-link">${i('back.texts')}</a>
+          <div class="detail-header">
+            ${t.category ? `<span class="detail-category">${esc(t.category)}</span>` : ''}
+            <h1 class="detail-title">${esc(t.title)}</h1>
+            <hr class="ornament-line">
+            <div class="detail-meta">${fmtDate(t.published_at || t.created_at)}</div>
+          </div>
+          ${t.cover_image ? `<div class="detail-cover"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}"></div>` : ''}
+          <div class="text-content">${t.content || '<p>' + i('content.unavailable') + '</p>'}</div>
+        </div>
+      </div>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3><p>${esc(err.message)}</p></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Artworks section
+// ============================================================
+async function renderArtworksList() {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const items = await safeFetch('/api/artworks' + langParam());
+    if (!items.length) {
+      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.artworks')}</h3></div></div></div>`);
+    }
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">${i('home.section.art')}</h1>
+            <hr class="ornament-line">
+          </div>
+          <div class="gallery-grid">
+            ${items.map(a => renderArtworkGalleryItem(a)).join('')}
+          </div>
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3><p>${esc(err.message)}</p></div></div></div>`);
+  }
+}
+
+async function renderArtworkDetail(slug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const a = await safeFetch(`/api/artworks/${encodeURIComponent(slug)}` + langParam());
+    let images = [];
+    try { images = JSON.parse(a.images_json || '[]'); } catch {}
+
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <a href="/umeni" class="back-link">${i('back.art')}</a>
+          <div class="detail-header">
+            ${a.collection ? `<span class="detail-category">${esc(a.collection)}</span>` : ''}
+            <h1 class="detail-title">${esc(a.title)}</h1>
+            <hr class="ornament-line">
+            ${a.medium || a.year ? `<div class="detail-meta">${[a.medium, a.year].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
+          </div>
+          ${a.cover_image ? `<div class="detail-cover"><img src="${esc(a.cover_image)}" alt="${esc(a.title)}"></div>` : ''}
+          ${a.description ? `<div class="text-content"><p>${esc(a.description)}</p></div>` : ''}
+          ${images.length > 1 ? `
+          <div class="carousel" style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
+            <div class="carousel-track">
+              ${images.map(img => `<div class="carousel-slide"><img src="${esc(img)}" alt="${esc(a.title)}" loading="lazy"></div>`).join('')}
+            </div>
+          </div>` : ''}
+        </div>
+      </div>
+      <div class="lightbox-overlay hidden" id="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close" onclick="closeLightbox()">×</span>
+        <img class="lightbox-img" id="lightboxImg" src="" alt="">
+      </div>`);
+    if (window.initCarousels) window.initCarousels();
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3><p>${esc(err.message)}</p></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Jewelry section
+// ============================================================
+async function renderJewelryList() {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const items = await safeFetch('/api/jewelry' + langParam());
+    if (!items.length) {
+      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.artworks')}</h3></div></div></div>`);
+    }
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">${i('nav.drawing')}</h1>
+            <hr class="ornament-line">
+          </div>
+          <div class="jewelry-grid">
+            ${items.map(j => renderJewelryItem(j)).join('')}
+          </div>
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3><p>${esc(err.message)}</p></div></div></div>`);
+  }
+}
+
+async function renderJewelryDetail(slug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const j = await safeFetch(`/api/jewelry/${encodeURIComponent(slug)}` + langParam());
+    let images = [];
+    try { images = JSON.parse(j.images_json || '[]'); } catch {}
+
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <a href="/kresba" class="back-link">${i('back.drawing')}</a>
+          <div class="detail-header">
+            ${j.collection ? `<span class="detail-category">${esc(j.collection)}</span>` : ''}
+            <h1 class="detail-title">${esc(j.title)}</h1>
+            <hr class="ornament-line">
+          </div>
+          ${j.cover_image ? `<div class="detail-cover" style="max-width:600px;aspect-ratio:1"><img src="${esc(j.cover_image)}" alt="${esc(j.title)}"></div>` : ''}
+          <div class="text-content" style="margin-top:2rem">
+            ${j.description ? `<p>${esc(j.description)}</p>` : ''}
+            ${j.materials ? `<p><strong>${i('jewelry.materials')}:</strong> ${esc(j.materials)}</p>` : ''}
+            ${j.dimensions ? `<p><strong>${i('jewelry.dimensions')}:</strong> ${esc(j.dimensions)}</p>` : ''}
+            <span class="jewelry-badge ${j.is_available ? 'jewelry-badge--available' : 'jewelry-badge--unavailable'}">
+              ${j.is_available ? i('jewelry.available') : i('jewelry.currentlyUnavailable')}
+            </span>
+          </div>
+          ${images.length > 1 ? `
+          <div class="carousel" style="margin-top:3rem;max-width:600px;margin-left:auto;margin-right:auto">
+            <div class="carousel-track">
+              ${images.map(img => `<div class="carousel-slide"><img src="${esc(img)}" alt="${esc(j.title)}" loading="lazy"></div>`).join('')}
+            </div>
+          </div>` : ''}
+        </div>
+      </div>
+      <div class="lightbox-overlay hidden" id="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">×</span>
+        <img class="lightbox-img" id="lightboxImg" src="" alt="">
+      </div>`);
+    if (window.initCarousels) window.initCarousels();
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Blog section
+// ============================================================
+async function renderBlogList() {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const items = await safeFetch('/api/blog' + langParam());
+    if (!items.length) {
+      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.blog')}</h3></div></div></div>`);
+    }
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">${i('nav.blog')}</h1>
+            <hr class="ornament-line">
+          </div>
+          <div class="content-grid content-grid--3">
+            ${items.map(b => renderBlogCard(b)).join('')}
+          </div>
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3></div></div></div>`);
+  }
+}
+
+async function renderBlogPost(slug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const b = await safeFetch(`/api/blog/${encodeURIComponent(slug)}` + langParam());
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <a href="/blog" class="back-link">${i('back.blog')}</a>
+          <div class="detail-header">
+            <span class="detail-category">${i('nav.blog')}</span>
+            <h1 class="detail-title">${esc(b.title)}</h1>
+            <hr class="ornament-line">
+            <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
+          </div>
+          ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
+          <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
+        </div>
+      </div>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Programming section
+// ============================================================
+async function renderProgrammingList() {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const items = await safeFetch('/api/programming' + langParam());
+    if (!items.length) {
+      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.programming')}</h3></div></div></div>`);
+    }
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">${i('nav.programming')}</h1>
+            <hr class="ornament-line">
+          </div>
+          <div class="content-grid content-grid--3">
+            ${items.map(b => renderProgrammingCard(b)).join('')}
+          </div>
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3></div></div></div>`);
+  }
+}
+
+async function renderProgrammingPost(slug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const b = await safeFetch(`/api/programming/${encodeURIComponent(slug)}` + langParam());
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <a href="/programovani" class="back-link">${i('back.programming')}</a>
+          <div class="detail-header">
+            <span class="detail-category">${i('nav.programming')}</span>
+            <h1 class="detail-title">${esc(b.title)}</h1>
+            <hr class="ornament-line">
+            <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
+          </div>
+          ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
+          <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
+        </div>
+      </div>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Friends section
+// ============================================================
+async function renderFriendsIndex() {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const items = await safeFetch('/api/friends' + langParam());
+    if (!items.length) {
+      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.friends')}</h3></div></div></div>`);
+    }
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">${i('nav.friends')}</h1>
+            <hr class="ornament-line">
+            <p class="section-subtitle">${i('home.friendsSubtitle')}</p>
+          </div>
+          <div class="friend-grid">
+            ${items.map(f => renderFriendCard(f)).join('')}
+          </div>
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3></div></div></div>`);
+  }
+}
+
+async function renderFriendPage(friendSlug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const { friend, posts } = await safeFetch(`/api/friend-posts/by-friend/${encodeURIComponent(friendSlug)}` + langParam());
+    const initials = esc(friend.name).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <a href="/pratele" class="back-link">${i('back.friends')}</a>
+          <div class="detail-header" style="display:flex;align-items:center;gap:2rem;text-align:left;justify-content:flex-start;margin-bottom:3rem">
+            ${friend.avatar
+              ? `<img src="${esc(friend.avatar)}" alt="${esc(friend.name)}" style="width:96px;height:96px;border-radius:50%;object-fit:cover">`
+              : `<div class="friend-avatar-placeholder" style="width:96px;height:96px;font-size:2.2rem">${initials}</div>`}
+            <div>
+              <h1 class="detail-title" style="font-size:clamp(1.8rem,5vw,3rem)">${esc(friend.name)}</h1>
+              ${friend.short_bio ? `<p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);margin-top:0.5rem">${esc(friend.short_bio)}</p>` : ''}
+            </div>
+          </div>
+          ${friend.bio ? `<div class="text-content" style="margin-bottom:3rem"><p>${esc(friend.bio)}</p></div>` : ''}
+          ${posts.length ? `
+          <h2 class="section-title" style="font-size:clamp(1.5rem,3vw,2.2rem);margin-bottom:2rem">${i('friends.posts')}</h2>
+          <div class="content-grid content-grid--3">
+            ${posts.map(p => `
+              <div class="card" onclick="app.navigate('/pratele/${esc(friendSlug)}/${esc(p.slug)}')">
+                ${p.cover_image ? `<div class="card-img"><img src="${esc(p.cover_image)}" alt="${esc(p.title)}" loading="lazy"></div>` : ''}
+                <div class="card-body">
+                  <span class="card-category">${esc(p.type)}</span>
+                  <h3 class="card-title">${esc(p.title)}</h3>
+                  ${p.excerpt ? `<p class="card-excerpt">${esc(p.excerpt)}</p>` : ''}
+                  <div class="card-meta">${fmtDate(p.published_at || p.created_at)}</div>
+                </div>
+              </div>`).join('')}
+          </div>` : `<div class="empty-state"><h3>${i('empty.posts')}</h3></div>`}
+        </div>
+      </div>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3></div></div></div>`);
+  }
+}
+
+async function renderFriendPost(friendSlug, postSlug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const post = await safeFetch(`/api/friend-posts/${encodeURIComponent(postSlug)}` + langParam());
+    let images = [];
+    try { images = JSON.parse(post.images_json || '[]'); } catch {}
+
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <a href="/pratele/${esc(friendSlug)}" class="back-link">${i('back.backTo')} ${esc(post.friend_name)}</a>
+          <div class="detail-header">
+            <span class="detail-category">${esc(post.friend_name)} · ${esc(post.type)}</span>
+            <h1 class="detail-title">${esc(post.title)}</h1>
+            <hr class="ornament-line">
+            <div class="detail-meta">${fmtDate(post.published_at || post.created_at)}</div>
+          </div>
+          ${post.cover_image ? `<div class="detail-cover"><img src="${esc(post.cover_image)}" alt="${esc(post.title)}"></div>` : ''}
+          ${post.content ? `<div class="text-content">${post.content}</div>` : ''}
+          ${images.length > 1 ? `
+          <div class="carousel" style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
+            <div class="carousel-track">
+              ${images.map(img => `<div class="carousel-slide"><img src="${esc(img)}" alt="${esc(post.title)}" loading="lazy"></div>`).join('')}
+            </div>
+          </div>` : images.length === 1 ? `
+          <div style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
+            <img src="${esc(images[0])}" alt="${esc(post.title)}" style="width:100%;border-radius:var(--radius)">
+          </div>` : ''}
+        </div>
+      </div>`);
+    // Init carousels after content is set
+    if (window.initCarousels) window.initCarousels();
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3></div></div></div>`);
+  }
+}
+
+// ============================================================
+// About page
+// ============================================================
+async function renderAbout() {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const s = await safeFetch('/api/settings/public' + langParam());
+    app.setContent(`
+      <div class="detail-page">
+        <div class="detail-page__inner">
+          <div class="about-split" style="padding-top:2rem">
+            ${s.about_image ? `
+            <div class="about-image">
+              <img src="${esc(s.about_image)}" alt="${esc(s.owner_name || i('nav.about'))}">
+            </div>` : ''}
+            <div class="about-text">
+              <span class="detail-category">${i('nav.about')}</span>
+              <h1 class="detail-title" style="font-size:clamp(2rem,5vw,3.5rem)">${esc(s.owner_name || i('nav.about'))}</h1>
+              <hr class="ornament-line ornament-line--left">
+              ${s.about_text ? `<div class="text-content"><p>${esc(s.about_text)}</p></div>` : ''}
+              ${s.social_instagram || s.social_twitter ? `
+              <div class="footer-social" style="margin-top:2rem">
+                ${s.social_instagram ? `<a href="${esc(s.social_instagram)}" target="_blank" rel="noopener" aria-label="Instagram">IG</a>` : ''}
+                ${s.social_twitter ? `<a href="${esc(s.social_twitter)}" target="_blank" rel="noopener" aria-label="Twitter">TW</a>` : ''}
+              </div>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>`);
+  } catch {
+    app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('nav.about')}</h3></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Contact page
+// ============================================================
+function renderContact() {
+  const i = window.t || (k => k);
+  const formLoadedAt = Date.now();
+  app.setContent(`
+    <div class="detail-page">
+      <div class="detail-page__inner">
+        <div class="contact-section">
+          <span class="detail-category">${i('nav.contact')}</span>
+          <h1 class="detail-title" style="font-size:clamp(2rem,5vw,3.5rem)">${i('contact.writeMessage')}</h1>
+          <hr class="ornament-line">
+          <p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);margin-bottom:2.5rem">
+            ${i('contact.description')}
+          </p>
+          <div id="contactResult"></div>
+          <form id="contactForm" novalidate>
+            <input type="text" name="website" style="position:absolute;left:-9999px;opacity:0;height:0" tabindex="-1" autocomplete="off">
+            <div class="form-group">
+              <label class="form-label" for="cName">${i('contact.name')}</label>
+              <input class="form-input" type="text" id="cName" name="name" required placeholder="${i('contact.namePlaceholder')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cEmail">${i('contact.email')}</label>
+              <input class="form-input" type="email" id="cEmail" name="email" required placeholder="${i('contact.emailPlaceholder')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cSubject">${i('contact.subject')}</label>
+              <input class="form-input" type="text" id="cSubject" name="subject" placeholder="${i('contact.subjectPlaceholder')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cMessage">${i('contact.message')}</label>
+              <textarea class="form-textarea" id="cMessage" name="message" required placeholder="${i('contact.messagePlaceholder')}"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit" id="contactSubmit">${i('contact.send')}</button>
+          </form>
+        </div>
+      </div>
+    </div>`);
+
+  const form = document.getElementById('contactForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('contactSubmit');
+    const resultEl = document.getElementById('contactResult');
+
+    btn.disabled = true;
+    btn.textContent = i('contact.sending');
+    resultEl.innerHTML = '';
+
+    try {
+      const body = {
+        name:           form.elements.name.value.trim(),
+        email:          form.elements.email.value.trim(),
+        subject:        form.elements.subject?.value?.trim() || '',
+        message:        form.elements.message.value.trim(),
+        website:        form.elements.website?.value || '',
+        form_loaded_at: formLoadedAt,
+      };
+
+      const response = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const contentType = response.headers.get('content-type');
+
+      if (!response.ok) {
+        const err = contentType?.includes('application/json')
+          ? await response.json()
+          : { error: await response.text() };
+        throw new Error(err.error || i('contact.sendError'));
+      }
+
+      resultEl.innerHTML = `<div class="form-success">${i('contact.success')}</div>`;
+      form.reset();
+    } catch (err) {
+      resultEl.innerHTML = `<div class="form-error">${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = i('contact.send');
+    }
+  });
+}
+
+// ============================================================
+// 404
+// ============================================================
+function render404() {
+  const i = window.t || (k => k);
+  app.setContent(`
+    <div class="detail-page">
+      <div class="detail-page__inner" style="text-align:center">
+        <h1 class="detail-title" style="color:var(--ink-dim)">404</h1>
+        <p style="font-family:var(--font-body);color:var(--ink-mid)">${i('error.pageNotFound')}</p>
+        <div style="margin-top:2rem"><a href="/" class="btn btn-ghost">${i('back.home')}</a></div>
+      </div>
+    </div>`);
+}
+
+// ============================================================
+// Lightbox
+// ============================================================
+function openLightbox(src, alt) {
+  const lb = document.getElementById('lightbox');
+  const img = document.getElementById('lightboxImg');
+  if (lb && img) {
+    img.src = src;
+    img.alt = alt || '';
+    lb.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeLightbox() {
+  const lb = document.getElementById('lightbox');
+  if (lb) {
+    lb.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+// Expose globally for onclick handlers
+Object.assign(window, { app, openLightbox, closeLightbox, updateStaticI18n, renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
+  renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
+  renderBlogList, renderBlogPost, renderFriendsIndex, renderFriendPage, renderFriendPost,
+  renderAbout, renderContact });
+
+// Attach router methods to app
+Object.assign(app, { renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
+  renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
+  renderBlogList, renderBlogPost, renderFriendsIndex, renderFriendPage, renderFriendPost,
+  renderAbout, renderContact, render404 });
+
+// ── Init ──────────────────────────────────────────────────────
+if (window.initLang) window.initLang();
+updateStaticI18n();
+
+window.addEventListener('langchange', () => {
+  updateStaticI18n();
+  app.route(location.pathname);
+});
+
+app.route(location.pathname);
