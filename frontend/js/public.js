@@ -65,6 +65,23 @@ async function safeFetch(url) {
   return await response.json();
 }
 
+// ── Page intro text (admin "Stránky") ───────────────────────────
+let _pagesIntroCache = null;
+
+async function pageIntro(slug) {
+  if (!_pagesIntroCache) {
+    try {
+      const list = await safeFetch('/api/pages');
+      _pagesIntroCache = {};
+      for (const p of list) _pagesIntroCache[p.slug] = p.intro_text || '';
+    } catch {
+      _pagesIntroCache = {};
+    }
+  }
+  const intro = _pagesIntroCache[slug];
+  return intro ? `<p class="page-intro">${esc(intro)}</p>` : '';
+}
+
 // ============================================================
 // Router
 // ============================================================
@@ -482,6 +499,7 @@ async function renderTextsList() {
   const i = window.t || (k => k);
   try {
     const items = await safeFetch('/api/texts' + langParam());
+    const intro = await pageIntro('texty');
     if (!items.length) {
       return app.setContent(`
         <div class="detail-page">
@@ -497,6 +515,7 @@ async function renderTextsList() {
           <div class="section-header">
             <h1 class="section-title">${i('nav.texts')}</h1>
             <hr class="ornament-line">
+            ${intro}
           </div>
           <div class="content-grid content-grid--3">
             ${items.map(t => renderTextCard(t)).join('')}
@@ -640,6 +659,7 @@ async function renderJewelryList() {
   const i = window.t || (k => k);
   try {
     const items = await safeFetch('/api/jewelry' + langParam());
+    const intro = await pageIntro('kresba');
     if (!items.length) {
       return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.artworks')}</h3></div></div></div>`);
     }
@@ -649,6 +669,7 @@ async function renderJewelryList() {
           <div class="section-header">
             <h1 class="section-title">${i('nav.drawing')}</h1>
             <hr class="ornament-line">
+            ${intro}
           </div>
           <div class="jewelry-grid">
             ${items.map(j => renderJewelryItem(j)).join('')}
@@ -712,6 +733,7 @@ async function renderBlogList() {
   const i = window.t || (k => k);
   try {
     const items = await safeFetch('/api/blog' + langParam());
+    const intro = await pageIntro('blog');
     if (!items.length) {
       return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.blog')}</h3></div></div></div>`);
     }
@@ -721,6 +743,7 @@ async function renderBlogList() {
           <div class="section-header">
             <h1 class="section-title">${i('nav.blog')}</h1>
             <hr class="ornament-line">
+            ${intro}
           </div>
           <div class="content-grid content-grid--3">
             ${items.map(b => renderBlogCard(b)).join('')}
@@ -764,6 +787,7 @@ async function renderProgrammingList() {
   const i = window.t || (k => k);
   try {
     const items = await safeFetch('/api/programming' + langParam());
+    const intro = await pageIntro('programovani');
     if (!items.length) {
       return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.programming')}</h3></div></div></div>`);
     }
@@ -773,6 +797,7 @@ async function renderProgrammingList() {
           <div class="section-header">
             <h1 class="section-title">${i('nav.programming')}</h1>
             <hr class="ornament-line">
+            ${intro}
           </div>
           <div class="content-grid content-grid--3">
             ${items.map(b => renderProgrammingCard(b)).join('')}
@@ -816,6 +841,7 @@ async function renderFriendsIndex() {
   const i = window.t || (k => k);
   try {
     const items = await safeFetch('/api/friends' + langParam());
+    const intro = await pageIntro('pratele');
     if (!items.length) {
       return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.friends')}</h3></div></div></div>`);
     }
@@ -825,6 +851,7 @@ async function renderFriendsIndex() {
           <div class="section-header">
             <h1 class="section-title">${i('nav.friends')}</h1>
             <hr class="ornament-line">
+            ${intro}
             <p class="section-subtitle">${i('home.friendsSubtitle')}</p>
           </div>
           <div class="friend-grid">
@@ -925,6 +952,7 @@ async function renderAbout() {
   const i = window.t || (k => k);
   try {
     const s = await safeFetch('/api/settings/public' + langParam());
+    const intro = await pageIntro('o-mne');
     app.setContent(`
       <div class="detail-page">
         <div class="detail-page__inner">
@@ -937,6 +965,7 @@ async function renderAbout() {
               <span class="detail-category">${i('nav.about')}</span>
               <h1 class="detail-title" style="font-size:clamp(2rem,5vw,3.5rem)">${esc(s.owner_name || i('nav.about'))}</h1>
               <hr class="ornament-line ornament-line--left">
+              ${intro}
               ${s.about_text ? `<div class="text-content"><p>${esc(s.about_text)}</p></div>` : ''}
               ${s.social_instagram || s.social_twitter ? `
               <div class="footer-social" style="margin-top:2rem">
@@ -955,9 +984,10 @@ async function renderAbout() {
 // ============================================================
 // Contact page
 // ============================================================
-function renderContact() {
+async function renderContact() {
   const i = window.t || (k => k);
   const formLoadedAt = Date.now();
+  const intro = await pageIntro('kontakt');
   app.setContent(`
     <div class="detail-page">
       <div class="detail-page__inner">
@@ -965,6 +995,7 @@ function renderContact() {
           <span class="detail-category">${i('nav.contact')}</span>
           <h1 class="detail-title" style="font-size:clamp(2rem,5vw,3.5rem)">${i('contact.writeMessage')}</h1>
           <hr class="ornament-line">
+          ${intro}
           <p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);margin-bottom:2.5rem">
             ${i('contact.description')}
           </p>

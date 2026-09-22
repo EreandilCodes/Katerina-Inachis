@@ -375,6 +375,35 @@ export async function initDatabase() {
   }
   console.log('✅ settings table ready');
 
+  // Pages — public page intro texts
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS pages (
+      id         ${pk},
+      slug       TEXT UNIQUE NOT NULL,
+      title      TEXT NOT NULL DEFAULT '',
+      intro_text TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const defaultPages = [
+    ['texty',        'Texty'],
+    ['kresba',       'Kresba a malba'],
+    ['blog',         'Blog'],
+    ['programovani', 'Programování'],
+    ['pratele',      'Přátelé'],
+    ['o-mne',        'O mně'],
+    ['kontakt',      'Kontakt'],
+  ];
+
+  for (const [slug, title] of defaultPages) {
+    await db.prepare(
+      `INSERT INTO pages (slug, title, intro_text) VALUES (?, ?, '') ON CONFLICT (slug) DO NOTHING`
+    ).run(slug, title);
+  }
+  console.log('✅ pages table ready');
+
   // Seed admin user
   const passwordHash = bcrypt.hashSync('admin123', 10);
   await db.prepare(

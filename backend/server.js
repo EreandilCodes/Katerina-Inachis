@@ -19,6 +19,7 @@ import friendPostsRoutes    from './routes/friend-posts.js';
 import friendPortalRouter   from './routes/friend-portal.js';
 import galleryRoutes        from './routes/gallery.js';
 import settingsRoutes       from './routes/settings.js';
+import pagesRoutes          from './routes/pages.js';
 import inquiriesRoutes      from './routes/inquiries.js';
 
 dotenv.config();
@@ -78,6 +79,7 @@ initWithTimeout
     app.use('/api/friend-portal',  friendPortalRouter);
     app.use('/api/gallery',        galleryRoutes);
     app.use('/api/settings',       settingsRoutes);
+    app.use('/api/pages',          pagesRoutes);
     app.use('/api/inquiries',      inquiriesRoutes);
 
     // Admin panel

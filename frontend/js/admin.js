@@ -13,9 +13,11 @@ import { FriendsManager }     from '../admin/friends.js';
 import { FriendPostsManager } from '../admin/friend-posts.js';
 import { GalleryManager }     from '../admin/gallery.js';
 import { SettingsManager }    from '../admin/settings.js';
+import { PagesManager }       from '../admin/pages.js';
 
 const SECTION_TITLES = {
   overview:     'Přehled',
+  pages:        'Stránky',
   texts:        'Texty',
   artworks:     'Umění',
   jewelry:      'Šperky',
@@ -72,6 +74,10 @@ class AdminController {
 
     try {
       switch (name) {
+        case 'pages':
+          this.managers.pages ??= new PagesManager(this.auth, this);
+          await this.managers.pages.init();
+          break;
         case 'texts':
           this.managers.texts ??= new TextsManager(this.auth, this);
           await this.managers.texts.init();

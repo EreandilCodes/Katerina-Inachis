@@ -454,6 +454,18 @@ button {
   letter-spacing: 0.03em;
 }
 
+.page-intro {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: clamp(0.95rem, 2vw, 1.05rem);
+  line-height: 1.7;
+  color: var(--ink-mid);
+  letter-spacing: 0.02em;
+  white-space: pre-line;
+  max-width: 46em;
+  margin: 1.5rem auto 0;
+}
+
 /* ── 6. Ornament Line ──────────────────────────────────────── */
 .ornament-line {
   border: none;
