@@ -25,10 +25,31 @@ function checkLoginRate(ip) {
   return true;
 }
 
+// ── Password change rate limit: 10 attempts / 30 min / IP ────────────────
+// Prevents the endpoint from becoming an unlimited password-guessing oracle.
+const passwordRateLimits = new Map();
+const PASSWORD_MAX    = 10;
+const PASSWORD_WINDOW = 30 * 60 * 1000;
+
+function checkPasswordRate(ip) {
+  const now   = Date.now();
+  const entry = passwordRateLimits.get(ip);
+  if (!entry || now - entry.windowStart > PASSWORD_WINDOW) {
+    passwordRateLimits.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  if (entry.count >= PASSWORD_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 setInterval(() => {
   const now = Date.now();
   for (const [ip, entry] of loginRateLimits.entries()) {
     if (now - entry.windowStart > LOGIN_WINDOW) loginRateLimits.delete(ip);
+  }
+  for (const [ip, entry] of passwordRateLimits.entries()) {
+    if (now - entry.windowStart > PASSWORD_WINDOW) passwordRateLimits.delete(ip);
   }
 }, 30 * 60 * 1000);
 
@@ -104,6 +125,61 @@ router.get('/me', AuthMiddleware.verifyToken, async (req, res) => {
     res.json(user);
   } catch (err) {
     logger.fromError('auth_me_error', err, { user_id: req.user?.id });
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
+
+// PUT /api/auth/password — authenticated admin changes their own password.
+// The target user is always derived from the verified JWT (req.user.id);
+// any userId supplied by the client is ignored.
+router.put('/password', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
+  try {
+    const ip = req.ip || req.connection?.remoteAddress || '0.0.0.0';
+    if (!checkPasswordRate(ip)) {
+      logger.warn('password_change_rate_limited', { ip });
+      return res.status(429).json({ error: 'Příliš mnoho pokusů. Zkuste to později.' });
+    }
+
+    const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Aktuální heslo, nové heslo a potvrzení jsou povinné' });
+    }
+    if (newPassword.length < 12) {
+      return res.status(400).json({ error: 'Nové heslo musí mít alespoň 12 znaků' });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Nová hesla se neshodují' });
+    }
+
+    // Never trust the client for the target; resolve the account from the JWT.
+    const user = await db.prepare('SELECT id, password_hash FROM users WHERE id = ?').get(req.user.id);
+    if (!user || !user.password_hash) {
+      // Generic message — do not reveal whether the account exists.
+      return res.status(401).json({ error: 'Neplatné přihlašovací údaje' });
+    }
+
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) {
+      logger.warn('password_change_failed', { reason: 'wrong_current_password', user_id: req.user.id });
+      return res.status(401).json({ error: 'Neplatné přihlašovací údaje' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: 'Nové heslo se musí lišit od aktuálního hesla' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const result = await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+      .run(passwordHash, req.user.id);
+    if (result.changes === 0) {
+      return res.status(500).json({ error: 'Chyba serveru' });
+    }
+
+    logger.info('password_changed', { user_id: req.user.id });
+    res.json({ success: true });
+  } catch (err) {
+    logger.fromError('password_change_error', err, { user_id: req.user?.id });
     res.status(500).json({ error: 'Chyba serveru' });
   }
 });

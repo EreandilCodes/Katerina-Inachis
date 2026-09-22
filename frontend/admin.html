@@ -330,6 +330,33 @@
               <div style="text-align:center;color:var(--ink-dim);font-size:0.85rem">Načítám…</div>
             </form>
           </div>
+
+          <div class="admin-table-wrapper" style="padding:1.5rem;margin-top:1.5rem">
+            <h3 style="font-family:var(--font-display);font-weight:500;font-size:1.15rem;color:var(--violet);letter-spacing:0.04em;margin-bottom:0.25rem">Změna hesla</h3>
+            <p style="font-family:var(--font-body);font-size:0.8rem;color:var(--ink-dim);margin-bottom:1.25rem">
+              Změňte heslo k přihlášení do administrace. Heslo musí mít alespoň 12 znaků.
+            </p>
+            <form id="passwordForm" novalidate>
+              <div class="form-group">
+                <label class="form-label" for="passwordCurrent">Aktuální heslo <span class="required">*</span></label>
+                <input class="form-input" type="password" id="passwordCurrent" name="currentPassword"
+                       required autocomplete="current-password" placeholder="Aktuální heslo">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="passwordNew">Nové heslo <span class="required">*</span></label>
+                <input class="form-input" type="password" id="passwordNew" name="newPassword"
+                       required minlength="12" autocomplete="new-password" placeholder="Min. 12 znaků">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="passwordConfirm">Potvrdit nové heslo <span class="required">*</span></label>
+                <input class="form-input" type="password" id="passwordConfirm" name="confirmPassword"
+                       required autocomplete="new-password" placeholder="Opakujte nové heslo">
+              </div>
+              <div style="margin-top:1rem">
+                <button type="submit" class="btn-admin btn-admin--primary" id="passwordSubmitBtn">Změnit heslo</button>
+              </div>
+            </form>
+          </div>
         </div>
       </section>
 

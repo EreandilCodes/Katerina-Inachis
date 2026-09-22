@@ -9,6 +9,65 @@ export class SettingsManager {
 
   async init() {
     await this.loadSettings();
+    this.bindPasswordForm();
+  }
+
+  bindPasswordForm() {
+    const form = document.getElementById('passwordForm');
+    if (!form || form.dataset.bound) return;
+    form.dataset.bound = '1';
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await this.changePassword(form);
+    });
+  }
+
+  async changePassword(form) {
+    const currentPassword = form.elements.currentPassword.value;
+    const newPassword     = form.elements.newPassword.value;
+    const confirmPassword = form.elements.confirmPassword.value;
+    const submitBtn       = document.getElementById('passwordSubmitBtn');
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      this.admin.showNotification('Vyplňte všechna pole', 'error');
+      return;
+    }
+    if (newPassword.length < 12) {
+      this.admin.showNotification('Nové heslo musí mít alespoň 12 znaků', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      this.admin.showNotification('Nová hesla se neshodují', 'error');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      this.admin.showNotification('Nové heslo se musí lišit od aktuálního', 'error');
+      return;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+      const response = await fetch('/api/auth/password', {
+        method: 'PUT',
+        headers: { ...this.auth.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+      });
+      const ct = response.headers.get('content-type');
+      if (!response.ok) {
+        const err = ct?.includes('application/json') ? await response.json() : { error: await response.text() };
+        throw new Error(err.error || 'Heslo nebylo změněno');
+      }
+      if (!ct?.includes('application/json')) throw new Error('Neočekávaná odpověď serveru');
+
+      form.elements.currentPassword.value = '';
+      form.elements.newPassword.value     = '';
+      form.elements.confirmPassword.value = '';
+      this.admin.showNotification('Heslo bylo úspěšně změněno');
+    } catch (err) {
+      this.admin.showNotification(`Chyba: ${err.message}`, 'error');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
   }
 
   async loadSettings() {

@@ -46,7 +46,7 @@ backend/
 │   ├── auth.js           JWT verify + adminOnly (named export)
 │   └── request-logger.js Per-request logger (copy from KanjoWin)
 └── routes/
-    ├── auth.js           POST /login, GET /me, rate limiting
+    ├── auth.js           POST /login, GET /me, PUT /password, rate limiting
     ├── texts.js          Texts/essays CRUD
     ├── artworks.js       Artworks CRUD
     ├── jewelry.js        Jewelry CRUD
@@ -91,6 +91,7 @@ import AuthMiddleware from '../middleware/auth.js';
 ```
 POST   /api/auth/login                          # rate limited
 GET    /api/auth/me
+PUT    /api/auth/password                        # admin changes own password (rate limited)
 
 GET    /api/texts                               # published
 GET    /api/texts/admin/all                     # admin
