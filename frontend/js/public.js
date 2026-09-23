@@ -66,19 +66,18 @@ async function safeFetch(url) {
 }
 
 // ── Page intro text (admin "Stránky") ───────────────────────────
-let _pagesIntroCache = null;
-
+// Fetched fresh on every render so a value saved in the admin panel is
+// reflected immediately — a cached list could show a stale (empty) intro for
+// the rest of the tab's life and a single failed fetch would poison it for good.
 async function pageIntro(slug) {
-  if (!_pagesIntroCache) {
-    try {
-      const list = await safeFetch('/api/pages');
-      _pagesIntroCache = {};
-      for (const p of list) _pagesIntroCache[p.slug] = p.intro_text || '';
-    } catch {
-      _pagesIntroCache = {};
-    }
+  let list = [];
+  try {
+    list = await safeFetch('/api/pages');
+  } catch {
+    list = [];
   }
-  const intro = _pagesIntroCache[slug];
+  const page = list.find(p => p.slug === slug);
+  const intro = page ? page.intro_text || '' : '';
   return intro ? `<p class="page-intro">${esc(intro)}</p>` : '';
 }
 
@@ -466,15 +465,6 @@ async function renderTextsList() {
   try {
     const items = await safeFetch('/api/texts' + langParam());
     const intro = await pageIntro('texty');
-    if (!items.length) {
-      return app.setContent(`
-        <div class="detail-page">
-          <div class="detail-page__inner">
-            <div class="empty-state"><h3>${i('empty.texts')}</h3><p>${i('empty.textsDesc')}</p></div>
-          </div>
-        </div>`);
-    }
-
     app.setContent(`
       <section class="section">
         <div class="section-inner">
@@ -483,9 +473,9 @@ async function renderTextsList() {
             <hr class="ornament-line">
             ${intro}
           </div>
-          <div class="content-grid content-grid--3">
-            ${items.map(t => renderTextCard(t)).join('')}
-          </div>
+          ${items.length
+            ? `<div class="content-grid content-grid--3">${items.map(t => renderTextCard(t)).join('')}</div>`
+            : `<div class="empty-state"><h3>${i('empty.texts')}</h3><p>${i('empty.textsDesc')}</p></div>`}
         </div>
       </section>`);
   } catch (err) {
@@ -626,9 +616,6 @@ async function renderJewelryList() {
   try {
     const items = await safeFetch('/api/jewelry' + langParam());
     const intro = await pageIntro('kresba');
-    if (!items.length) {
-      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.artworks')}</h3></div></div></div>`);
-    }
     app.setContent(`
       <section class="section">
         <div class="section-inner">
@@ -637,9 +624,9 @@ async function renderJewelryList() {
             <hr class="ornament-line">
             ${intro}
           </div>
-          <div class="jewelry-grid">
-            ${items.map(j => renderJewelryItem(j)).join('')}
-          </div>
+          ${items.length
+            ? `<div class="jewelry-grid">${items.map(j => renderJewelryItem(j)).join('')}</div>`
+            : `<div class="empty-state"><h3>${i('empty.artworks')}</h3></div>`}
         </div>
       </section>`);
   } catch (err) {
@@ -700,9 +687,6 @@ async function renderBlogList() {
   try {
     const items = await safeFetch('/api/blog' + langParam());
     const intro = await pageIntro('blog');
-    if (!items.length) {
-      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.blog')}</h3></div></div></div>`);
-    }
     app.setContent(`
       <section class="section">
         <div class="section-inner">
@@ -711,9 +695,9 @@ async function renderBlogList() {
             <hr class="ornament-line">
             ${intro}
           </div>
-          <div class="content-grid content-grid--3">
-            ${items.map(b => renderBlogCard(b)).join('')}
-          </div>
+          ${items.length
+            ? `<div class="content-grid content-grid--3">${items.map(b => renderBlogCard(b)).join('')}</div>`
+            : `<div class="empty-state"><h3>${i('empty.blog')}</h3></div>`}
         </div>
       </section>`);
   } catch (err) {
@@ -754,9 +738,6 @@ async function renderProgrammingList() {
   try {
     const items = await safeFetch('/api/programming' + langParam());
     const intro = await pageIntro('programovani');
-    if (!items.length) {
-      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.programming')}</h3></div></div></div>`);
-    }
     app.setContent(`
       <section class="section">
         <div class="section-inner">
@@ -765,9 +746,9 @@ async function renderProgrammingList() {
             <hr class="ornament-line">
             ${intro}
           </div>
-          <div class="content-grid content-grid--3">
-            ${items.map(b => renderProgrammingCard(b)).join('')}
-          </div>
+          ${items.length
+            ? `<div class="content-grid content-grid--3">${items.map(b => renderProgrammingCard(b)).join('')}</div>`
+            : `<div class="empty-state"><h3>${i('empty.programming')}</h3></div>`}
         </div>
       </section>`);
   } catch (err) {
@@ -808,9 +789,6 @@ async function renderFriendsIndex() {
   try {
     const items = await safeFetch('/api/friends' + langParam());
     const intro = await pageIntro('pratele');
-    if (!items.length) {
-      return app.setContent(`<div class="detail-page"><div class="detail-page__inner"><div class="empty-state"><h3>${i('empty.friends')}</h3></div></div></div>`);
-    }
     app.setContent(`
       <section class="section">
         <div class="section-inner">
@@ -820,9 +798,9 @@ async function renderFriendsIndex() {
             ${intro}
             <p class="section-subtitle">${i('home.friendsSubtitle')}</p>
           </div>
-          <div class="friend-grid">
-            ${items.map(f => renderFriendCard(f)).join('')}
-          </div>
+          ${items.length
+            ? `<div class="friend-grid">${items.map(f => renderFriendCard(f)).join('')}</div>`
+            : `<div class="empty-state"><h3>${i('empty.friends')}</h3></div>`}
         </div>
       </section>`);
   } catch (err) {

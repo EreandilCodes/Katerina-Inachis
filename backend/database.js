@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -66,6 +67,10 @@ function createSqliteDb() {
   const dbPath = process.env.SQLITE_PATH
     ? path.resolve(process.env.SQLITE_PATH)
     : path.join(__dirname, 'inachis.db');
+
+  // Make sure the target directory exists (e.g. a Railway volume mount at
+  // /data). No-op when the directory already exists.
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
   const sqliteDb = new sqlite3.Database(dbPath, (err) => {
     if (err) { console.error('❌ Failed to open SQLite database:', err); throw err; }
