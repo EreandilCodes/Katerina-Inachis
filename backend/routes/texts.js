@@ -5,6 +5,39 @@ import { logger } from '../logger.js';
 
 const router = express.Router();
 
+// ── Story-aware request body parsing ─────────────────────────────────────
+// Literary stories under the "Povídky" category may be very long (a single
+// full-length story can exceed Express's default 100kb JSON body limit).
+// This router therefore parses its own JSON with a much larger cap for
+// request bodies whose `category` is "Povídky"; every other payload keeps the
+// previous ~100kb limit. Because this router is mounted before the global
+// express.json() parser in server.js, the default parser skips already-parsed
+// bodies for these routes.
+const STORY_CATEGORY  = 'Povídky';
+const STORY_BODY_LIMIT = '30mb';
+const DEFAULT_BODY_LIMIT_BYTES = 100 * 1024; // 100kb — unchanged behaviour for everything else
+
+const storyJson = express.json({
+  limit: STORY_BODY_LIMIT,
+  verify: (req, _res, buf) => {
+    let category;
+    try {
+      category = JSON.parse(buf.toString('utf8')).category;
+    } catch {
+      return; // JSON syntax errors are reported by body-parser itself
+    }
+    if (category !== STORY_CATEGORY && buf.length > DEFAULT_BODY_LIMIT_BYTES) {
+      const err = new Error('Request entity too large for non-story content');
+      err.status = 413;
+      err.type = 'entity.too.large';
+      err.limit = '100kb';
+      throw err;
+    }
+  },
+});
+
+router.use(storyJson);
+
 function generateSlug(title) {
   return title
     .toLowerCase()

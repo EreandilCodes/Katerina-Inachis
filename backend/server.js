@@ -51,10 +51,8 @@ initWithTimeout
     app.disable('x-powered-by');
     app.use(cors());
     app.use(compression());
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
 
-    // ── Request logging (must be before routes) ───────────────────────────
+    // ── Request logging (before body parsing, so parse errors are logged) ──
     app.use(requestLogger);
 
     // Security headers
@@ -67,9 +65,16 @@ initWithTimeout
     // Static files
     app.use(express.static(path.join(__dirname, '../frontend')));
 
-    // API Routes
+    // ── API Routes ─────────────────────────────────────────────────────────
+    // Texty is mounted BEFORE the default JSON parser: the texts router parses
+    // its own request bodies so literary story (Povídky) bodies are not limited
+    // to the global 100kb. Every other API keeps the default 100kb body limit.
+    app.use('/api/texts', textsRoutes);
+
+    app.use(express.json({ limit: '100kb' }));
+    app.use(express.urlencoded({ extended: true }));
+
     app.use('/api/auth',           authRoutes);
-    app.use('/api/texts',          textsRoutes);
     app.use('/api/artworks',       artworksRoutes);
     app.use('/api/jewelry',        jewelryRoutes);
     app.use('/api/blog',           blogRoutes);
@@ -105,6 +110,11 @@ initWithTimeout
     // ── Global error handler (must be last) ───────────────────────────────
     // eslint-disable-next-line no-unused-vars
     app.use((err, req, res, _next) => {
+      // Surface body-size limits as a real 413 instead of a generic 500.
+      if (err?.type === 'entity.too.large' || err?.status === 413) {
+        logger.fromError('request_too_large', err, { method: req.method, path: req.path });
+        return res.status(413).json({ error: 'Požadavek je příliš velký' });
+      }
       logger.fromError('unhandled_request_error', err, { method: req.method, path: req.path });
       res.status(500).json({ error: 'Chyba serveru' });
     });
