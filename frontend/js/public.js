@@ -87,10 +87,9 @@ async function pageIntro(slug) {
 // ============================================================
 const app = {
   currentPath: null,
-  pendingScroll: null,
 
   navigate(path) {
-    if (path === this.currentPath && !this.pendingScroll) return;
+    if (path === this.currentPath) return;
     history.pushState(null, '', path);
     this.route(path);
   },
@@ -100,8 +99,15 @@ const app = {
     this.updateNav(path);
 
     // Show hero only on homepage
+    const isHome = (path === '/' || path === '');
     const hero = document.getElementById('hero');
-    if (hero) hero.style.display = (path === '/' || path === '') ? '' : 'none';
+    if (hero) hero.style.display = isHome ? '' : 'none';
+
+    // Internal pages have no dark hero behind the fixed header, so the header
+    // must stay in its legible (light-background) state instead of the
+    // transparent white-on-dark state that is only valid over the hero.
+    const headerEl = document.getElementById('siteHeader');
+    if (headerEl) headerEl.classList.toggle('scrolled', !isHome || window.scrollY > 20);
 
     const segments = path.split('/').filter(Boolean);
     const [s0, s1, s2] = segments;
@@ -162,27 +168,6 @@ const app = {
   }
 };
 
-// ── Section scroll mapping (nav path → homepage section id) ──
-const NAV_SECTION_MAP = {
-  '/texty':        'section-texts',
-  '/umeni':        'section-art',
-  '/kresba':       'section-drawing',
-  '/blog':         'section-blog',
-  '/programovani': 'section-programming',
-  '/pratele':      'section-friends',
-  '/o-mne':        'section-about',
-  '/kontakt':      'section-contact',
-};
-
-function scrollToSection(sectionId) {
-  const el = document.getElementById(sectionId);
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return true;
-  }
-  return false;
-}
-
 // ── Nav intercept ─────────────────────────────────────────────
 document.addEventListener('click', (e) => {
   const a = e.target.closest('a[href]');
@@ -193,28 +178,6 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   // Close mobile nav
   document.getElementById('mobileNav')?.classList.remove('open');
-
-  // Content CTA links (data-navigate) always go to their real page instead of
-  // triggering homepage section-scroll.
-  if (a.hasAttribute('data-navigate')) {
-    app.navigate(href);
-    return;
-  }
-
-  // If on homepage and the link maps to a section, scroll instead of navigating
-  const sectionId = NAV_SECTION_MAP[href];
-  if (sectionId && (app.currentPath === '/' || app.currentPath === '')) {
-    scrollToSection(sectionId);
-    return;
-  }
-
-  // If not on homepage but href maps to a section, navigate home then scroll
-  if (sectionId && app.currentPath !== '/') {
-    app.pendingScroll = sectionId;
-    app.navigate('/');
-    return;
-  }
-
   app.navigate(href);
 });
 
@@ -228,7 +191,10 @@ document.getElementById('navHamburger')?.addEventListener('click', () => {
 // ── Header scroll ─────────────────────────────────────────────
 const header = document.getElementById('siteHeader');
 window.addEventListener('scroll', () => {
-  header?.classList.toggle('scrolled', window.scrollY > 20);
+  const atHome = (app.currentPath === '/' || app.currentPath === '');
+  // Internal pages have no dark hero behind the header, so they always use the
+  // legible (scrolled) header; only the homepage relies on scroll position.
+  header?.classList.toggle('scrolled', !atHome || window.scrollY > 20);
 }, { passive: true });
 
 // ============================================================
@@ -400,13 +366,6 @@ async function renderHomepage() {
     `;
 
     app.setContent(html);
-
-    // Handle pending scroll from nav click
-    if (app.pendingScroll) {
-      const sid = app.pendingScroll;
-      app.pendingScroll = null;
-      requestAnimationFrame(() => scrollToSection(sid));
-    }
   } catch (err) {
     const i = window.t || (k => k);
     app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.loading')}</h3><p>${esc(err.message)}</p></div></div></div>`);
@@ -1144,13 +1103,15 @@ document.addEventListener('keydown', (e) => {
 // Expose globally for onclick handlers
 Object.assign(window, { app, openLightbox, closeLightbox, updateStaticI18n, renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
   renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
-  renderBlogList, renderBlogPost, renderFriendsIndex, renderFriendPage, renderFriendPost,
+  renderBlogList, renderBlogPost, renderProgrammingList, renderProgrammingPost,
+  renderFriendsIndex, renderFriendPage, renderFriendPost,
   renderAbout, renderContact });
 
 // Attach router methods to app
 Object.assign(app, { renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
   renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
-  renderBlogList, renderBlogPost, renderFriendsIndex, renderFriendPage, renderFriendPost,
+  renderBlogList, renderBlogPost, renderProgrammingList, renderProgrammingPost,
+  renderFriendsIndex, renderFriendPage, renderFriendPost,
   renderAbout, renderContact, render404 });
 
 // ── Init ──────────────────────────────────────────────────────
