@@ -105,9 +105,32 @@ async function waitAppContent(page) {
   await page.waitForSelector('#app h1', { state: 'visible', timeout: 8000 });
 }
 
+async function waitAdminReady(page) {
+  // Wait until the AdminController finished init (overview rendered, nav listeners
+  // bound) so a click on [data-section] is guaranteed to be handled.
+  await page.waitForFunction(
+    () => {
+      const title = document.getElementById('adminPageTitle');
+      return title && title.textContent.trim() === 'Přehled';
+    },
+    null,
+    { timeout: 15000 }
+  );
+}
+
 async function adminOpenPages(page) {
+  await waitAdminReady(page);
   await page.locator('[data-section="pages"]').first().click();
-  await page.waitForSelector('#pagesForm textarea', { state: 'visible', timeout: 10000 });
+  // Retry: a click that lands before the controller binds listeners is a no-op.
+  for (let i = 0; i < 3; i++) {
+    try {
+      await page.waitForSelector('#pagesForm textarea', { state: 'visible', timeout: 8000 });
+      return;
+    } catch {
+      await page.locator('[data-section="pages"]').first().click();
+    }
+  }
+  throw new Error('admin pages section did not render its textareas');
 }
 
 async function publicIntroState(page, slug) {
@@ -172,9 +195,11 @@ try {
   // ── B. Admin UI: form submit + refresh persistence ─────────────
   await check('B1: admin UI saves via the form and value survives a full reload', async () => {
     const val = `${MARK} UI-saved intro`;
-    await page.goto(`${BASE}/admin`, { waitUntil: 'load' });
+    // Land on /login first, then inject the token and go to /admin — avoids the
+    // unauthenticated redirect race entirely.
+    await page.goto(`${BASE}/login`, { waitUntil: 'load' });
     await page.evaluate((t) => localStorage.setItem('inachis_token', t), token);
-    await page.reload({ waitUntil: 'load' });
+    await page.goto(`${BASE}/admin`, { waitUntil: 'load' });
 
     await adminOpenPages(page);
     await page.fill('#page_kontakt', val);
@@ -198,6 +223,7 @@ try {
     const val = `${MARK} after re-login`;
     await putIntro('blog', val, token);
     await page.goto(`${BASE}/admin`, { waitUntil: 'load' });
+    await waitAdminReady(page);
     await page.evaluate(() => localStorage.removeItem('inachis_token'));
     await page.goto(`${BASE}/login`, { waitUntil: 'load' });
 
