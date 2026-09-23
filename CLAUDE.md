@@ -55,7 +55,10 @@ backend/
     ├── friend-posts.js   Friend posts CRUD
     ├── gallery.js        Gallery folders + images + upload
     ├── settings.js       Site settings key-value
-    └── inquiries.js      Contact form submissions
+    ├── pages.js          Public page intro texts (Přehled → Stránky)
+    ├── inquiries.js      Contact form: validation → email via Resend → DB archive
+    └── services/
+        └── email.js      Real email delivery via Resend HTTPS API (fetch, no SDK)
 ```
 
 ### Critical import pattern
@@ -154,11 +157,26 @@ GET    /api/settings/public
 GET    /api/settings/admin/all
 PUT    /api/settings/:key
 
-POST   /api/inquiries
-GET    /api/inquiries/admin/all
-PUT    /api/inquiries/:id/read
-DELETE /api/inquiries/:id
+GET    /api/pages
+GET    /api/pages/:slug
+PUT    /api/pages/:slug                            # admin
+
+POST   /api/inquiries                              # public; validates → sends real email (Resend) → archives to DB
+GET    /api/inquiries/admin/all                    # admin
+PUT    /api/inquiries/:id/read                     # admin
+DELETE /api/inquiries/:id                          # admin
 ```
+
+### Contact email environment variables
+
+- `RESEND_API_KEY` — required; Resend API key (secret, Railway variable).
+- `EMAIL_FROM` — required; sender address/domain verified with Resend.
+- `CONTACT_EMAIL` — optional; recipient override. Falls back to the admin
+  `contact_email` setting when unset.
+- `RESEND_API_ENDPOINT` — optional; overrides the Resend endpoint (test seam only).
+
+If required config is missing, `POST /api/inquiries` returns 503 with a safe generic
+message; it never reports success without the provider confirming delivery.
 
 ---
 

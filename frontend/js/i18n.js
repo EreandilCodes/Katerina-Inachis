@@ -74,8 +74,13 @@ const translations = {
     'contact.messagePlaceholder': 'Vaše zpráva…',
     'contact.send': 'Odeslat zprávu',
     'contact.sending': 'Odesílám…',
-    'contact.success': 'Zpráva odeslána. Ozvu se co nejdříve.',
+    'contact.success': 'Zpráva byla úspěšně odeslána. Děkuji!',
     'contact.sendError': 'Chyba odeslání',
+    'contact.error.name': 'Vyplňte prosím své jméno.',
+    'contact.error.nameLong': 'Jméno je příliš dlouhé (max 100 znaků).',
+    'contact.error.email': 'Zadejte platný e-mail.',
+    'contact.error.message': 'Zpráva je příliš krátká (min 10 znaků).',
+    'contact.error.messageLong': 'Zpráva je příliš dlouhá (max 5000 znaků).',
 
     // Jewelry / detail
     'jewelry.materials': 'Materiály',
@@ -172,8 +177,13 @@ const translations = {
     'contact.messagePlaceholder': 'Your message…',
     'contact.send': 'Send message',
     'contact.sending': 'Sending…',
-    'contact.success': "Message sent. I'll get back to you soon.",
+    'contact.success': 'Your message has been sent successfully. Thank you!',
     'contact.sendError': 'Failed to send',
+    'contact.error.name': 'Please enter your name.',
+    'contact.error.nameLong': 'Name is too long (max 100 characters).',
+    'contact.error.email': 'Please enter a valid email address.',
+    'contact.error.message': 'Message must be at least 10 characters.',
+    'contact.error.messageLong': 'Message is too long (max 5000 characters).',
 
     // Jewelry / detail
     'jewelry.materials': 'Materials',

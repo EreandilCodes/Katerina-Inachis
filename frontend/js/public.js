@@ -194,6 +194,13 @@ document.addEventListener('click', (e) => {
   // Close mobile nav
   document.getElementById('mobileNav')?.classList.remove('open');
 
+  // Content CTA links (data-navigate) always go to their real page instead of
+  // triggering homepage section-scroll.
+  if (a.hasAttribute('data-navigate')) {
+    app.navigate(href);
+    return;
+  }
+
   // If on homepage and the link maps to a section, scroll instead of navigating
   const sectionId = NAV_SECTION_MAP[href];
   if (sectionId && (app.currentPath === '/' || app.currentPath === '')) {
@@ -386,7 +393,7 @@ async function renderHomepage() {
             <p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);margin-bottom:2rem;max-width:480px;margin-left:auto;margin-right:auto">
               ${i('home.contactDescription')}
             </p>
-            <a href="/kontakt" class="btn btn-primary">${i('home.writeMessage')}</a>
+            <a href="/kontakt" class="btn btn-primary" data-navigate="1">${i('home.writeMessage')}</a>
           </div>
         </div>
       </section>
@@ -1004,19 +1011,19 @@ async function renderContact() {
             <input type="text" name="website" style="position:absolute;left:-9999px;opacity:0;height:0" tabindex="-1" autocomplete="off">
             <div class="form-group">
               <label class="form-label" for="cName">${i('contact.name')}</label>
-              <input class="form-input" type="text" id="cName" name="name" required placeholder="${i('contact.namePlaceholder')}">
+              <input class="form-input" type="text" id="cName" name="name" required maxlength="100" placeholder="${i('contact.namePlaceholder')}">
             </div>
             <div class="form-group">
               <label class="form-label" for="cEmail">${i('contact.email')}</label>
-              <input class="form-input" type="email" id="cEmail" name="email" required placeholder="${i('contact.emailPlaceholder')}">
+              <input class="form-input" type="email" id="cEmail" name="email" required maxlength="200" placeholder="${i('contact.emailPlaceholder')}">
             </div>
             <div class="form-group">
               <label class="form-label" for="cSubject">${i('contact.subject')}</label>
-              <input class="form-input" type="text" id="cSubject" name="subject" placeholder="${i('contact.subjectPlaceholder')}">
+              <input class="form-input" type="text" id="cSubject" name="subject" maxlength="200" placeholder="${i('contact.subjectPlaceholder')}">
             </div>
             <div class="form-group">
               <label class="form-label" for="cMessage">${i('contact.message')}</label>
-              <textarea class="form-textarea" id="cMessage" name="message" required placeholder="${i('contact.messagePlaceholder')}"></textarea>
+              <textarea class="form-textarea" id="cMessage" name="message" required maxlength="5000" placeholder="${i('contact.messagePlaceholder')}"></textarea>
             </div>
             <button class="btn btn-primary" type="submit" id="contactSubmit">${i('contact.send')}</button>
           </form>
@@ -1027,21 +1034,36 @@ async function renderContact() {
   const form = document.getElementById('contactForm');
   if (!form) return;
 
+  let sending = false;
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('contactSubmit');
     const resultEl = document.getElementById('contactResult');
+    if (sending) return;
 
+    const name    = form.elements.name.value.trim();
+    const email   = form.elements.email.value.trim();
+    const message = form.elements.message.value.trim();
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!name)                         return showContactError(resultEl, i('contact.error.name'));
+    if (name.length > 100)             return showContactError(resultEl, i('contact.error.nameLong'));
+    if (!email || !EMAIL_RE.test(email)) return showContactError(resultEl, i('contact.error.email'));
+    if (!message || message.length < 10) return showContactError(resultEl, i('contact.error.message'));
+    if (message.length > 5000)         return showContactError(resultEl, i('contact.error.messageLong'));
+
+    sending = true;
     btn.disabled = true;
     btn.textContent = i('contact.sending');
     resultEl.innerHTML = '';
 
     try {
       const body = {
-        name:           form.elements.name.value.trim(),
-        email:          form.elements.email.value.trim(),
+        name,
+        email,
         subject:        form.elements.subject?.value?.trim() || '',
-        message:        form.elements.message.value.trim(),
+        message,
         website:        form.elements.website?.value || '',
         form_loaded_at: formLoadedAt,
       };
@@ -1064,12 +1086,18 @@ async function renderContact() {
       resultEl.innerHTML = `<div class="form-success">${i('contact.success')}</div>`;
       form.reset();
     } catch (err) {
-      resultEl.innerHTML = `<div class="form-error">${esc(err.message)}</div>`;
+      showContactError(resultEl, err.message || i('contact.sendError'));
     } finally {
+      sending = false;
       btn.disabled = false;
       btn.textContent = i('contact.send');
     }
   });
+}
+
+function showContactError(resultEl, message) {
+  if (!resultEl) return;
+  resultEl.innerHTML = `<div class="form-error">${esc(message)}</div>`;
 }
 
 // ============================================================
