@@ -951,9 +951,15 @@ async function renderAbout() {
 // Contact page
 // ============================================================
 async function renderContact() {
+  app.showLoading();
   const i = window.t || (k => k);
   const formLoadedAt = Date.now();
-  const intro = await pageIntro('kontakt');
+  let intro = '';
+  try {
+    intro = (await pageIntro('kontakt')) || '';
+  } catch {
+    intro = '';
+  }
   app.setContent(`
     <div class="detail-page">
       <div class="detail-page__inner">
