@@ -17,7 +17,7 @@ import programmingRoutes    from './routes/programming.js';
 import friendsRoutes        from './routes/friends.js';
 import friendPostsRoutes    from './routes/friend-posts.js';
 import friendPortalRouter   from './routes/friend-portal.js';
-import galleryRoutes        from './routes/gallery.js';
+import galleryRoutes, { GALLERY_UPLOAD_DIR, reconcileLegacyGalleryFiles } from './routes/gallery.js';
 import settingsRoutes       from './routes/settings.js';
 import pagesRoutes          from './routes/pages.js';
 import categoriesRoutes     from './routes/categories.js';
@@ -49,6 +49,10 @@ initWithTimeout
       });
     }
 
+    // Best-effort: copy any Gallery files that exist only in the legacy
+    // container dir into the persistent upload dir (never destructive).
+    reconcileLegacyGalleryFiles();
+
     app.disable('x-powered-by');
     app.use(cors());
     app.use(compression());
@@ -64,6 +68,10 @@ initWithTimeout
     });
 
     // Static files
+    // Gallery uploads are served first from the persistent volume dir so that
+    // images survive deploy cycles (the generic frontend static mount below
+    // would otherwise prefer/collide with files in the ephemeral container).
+    app.use('/uploads/gallery', express.static(GALLERY_UPLOAD_DIR));
     app.use(express.static(path.join(__dirname, '../frontend')));
 
     // ── API Routes ─────────────────────────────────────────────────────────

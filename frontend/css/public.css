@@ -498,6 +498,22 @@ button {
   grid-template-columns: repeat(4, 1fr);
 }
 
+/* ── 7b. Horizontal scroll row (homepage newest tiles) ────── */
+.scroll-row {
+  display: flex;
+  gap: var(--gap);
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  margin-bottom: -0.75rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-row > * {
+  flex: 0 0 min(280px, 78vw);
+  scroll-snap-align: start;
+}
+
 /* ── 8. Cards ──────────────────────────────────────────────── */
 .card {
   background: var(--card-bg);

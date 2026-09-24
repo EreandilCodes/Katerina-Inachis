@@ -203,23 +203,25 @@ async function renderHomepage() {
   app.showLoading();
   try {
     const lp = langParam();
-    const [settings, featuredTexts, featuredArtworks, featuredJewelry, friends, blogPosts, programmingPosts] = await Promise.allSettled([
+    const [settings, textsList, artworksList, jewelryList, friends, blogList, programmingList] = await Promise.allSettled([
       safeFetch('/api/settings/public' + lp),
-      safeFetch('/api/texts/featured' + lp),
-      safeFetch('/api/artworks/featured' + lp),
-      safeFetch('/api/jewelry/featured' + lp),
+      safeFetch('/api/texts' + lp),
+      safeFetch('/api/artworks' + lp),
+      safeFetch('/api/jewelry' + lp),
       safeFetch('/api/friends' + lp),
       safeFetch('/api/blog' + lp),
       safeFetch('/api/programming' + lp)
     ]);
 
     const s     = settings.value     || {};
-    const texts  = (featuredTexts.value  || []).slice(0, 3);
-    const arts   = (featuredArtworks.value || []).slice(0, 4);
-    const jewels = (featuredJewelry.value  || []).slice(0, 3);
+    // Newest items, up to 4 per content section.
+    const MAX_ROWS = 4;
+    const texts  = (textsList.value  || []).slice(0, MAX_ROWS);
+    const arts   = (artworksList.value || []).slice(0, MAX_ROWS);
+    const jewels = (jewelryList.value  || []).slice(0, MAX_ROWS);
     const frds   = (friends.value    || []).slice(0, 4);
-    const blogs  = (blogPosts.value  || []).slice(0, 3);
-    const progs  = (programmingPosts.value || []).slice(0, 3);
+    const blogs  = (blogList.value    || []).slice(0, MAX_ROWS);
+    const progs  = (programmingList.value || []).slice(0, MAX_ROWS);
 
     // Update hero
     const heroBg = document.getElementById('heroBg');
@@ -240,7 +242,7 @@ async function renderHomepage() {
             <h2 class="section-title">${i('home.section.texts')}</h2>
             <hr class="ornament-line">
           </div>
-          <div class="content-grid content-grid--3">
+          <div class="scroll-row">
             ${texts.map(t => renderTextCard(t)).join('')}
           </div>
           <div style="text-align:center;margin-top:2.5rem">
@@ -256,7 +258,7 @@ async function renderHomepage() {
             <h2 class="section-title">${i('home.section.art')}</h2>
             <hr class="ornament-line">
           </div>
-          <div class="gallery-grid">
+          <div class="scroll-row">
             ${arts.map(a => renderArtworkGalleryItem(a)).join('')}
           </div>
           <div style="text-align:center;margin-top:2.5rem">
@@ -272,7 +274,7 @@ async function renderHomepage() {
             <h2 class="section-title">${i('home.section.drawing')}</h2>
             <hr class="ornament-line">
           </div>
-          <div class="jewelry-grid">
+          <div class="scroll-row">
             ${jewels.map(j => renderJewelryItem(j)).join('')}
           </div>
           <div style="text-align:center;margin-top:2.5rem">
@@ -305,7 +307,7 @@ async function renderHomepage() {
             <h2 class="section-title">${i('home.section.blog')}</h2>
             <hr class="ornament-line">
           </div>
-          <div class="content-grid content-grid--3">
+          <div class="scroll-row">
             ${blogs.map(b => renderBlogCard(b)).join('')}
           </div>
           <div style="text-align:center;margin-top:2.5rem">
@@ -321,7 +323,7 @@ async function renderHomepage() {
             <h2 class="section-title">${i('home.section.programming')}</h2>
             <hr class="ornament-line">
           </div>
-          <div class="content-grid content-grid--3">
+          <div class="scroll-row">
             ${progs.map(b => renderProgrammingCard(b)).join('')}
           </div>
           <div style="text-align:center;margin-top:2.5rem">

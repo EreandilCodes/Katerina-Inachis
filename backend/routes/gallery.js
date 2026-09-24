@@ -15,7 +15,23 @@ const router = express.Router();
 // ============================================================
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOAD_DIR = path.join(__dirname, '../../frontend/uploads/gallery');
+// Legacy location inside the container filesystem (wiped on every deploy).
+const LEGACY_UPLOAD_DIR = path.join(__dirname, '../../frontend/uploads/gallery');
+// Persistent location — Railway mounts a volume at /data. Prefer explicitly
+// configured dir, then derive from SQLITE_PATH when the DB itself lives on the
+// volume (uploaded files must persist across redeploys exactly like the DB).
+function resolveUploadDir() {
+  if (process.env.GALLERY_UPLOAD_DIR) {
+    return path.resolve(process.env.GALLERY_UPLOAD_DIR);
+  }
+  const dbPath = process.env.SQLITE_PATH;
+  if (process.env.DB_PROVIDER !== 'postgres' && dbPath && dbPath.startsWith('/data/')) {
+    return '/data/uploads/gallery';
+  }
+  return LEGACY_UPLOAD_DIR;
+}
+
+const UPLOAD_DIR = resolveUploadDir();
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -38,12 +54,20 @@ const upload = multer({
 });
 
 async function resizeForWeb(buffer, mimetype) {
+  // Animated GIFs keep their original buffer & dimensions (safe passthrough).
   if (mimetype === 'image/gif') return buffer;
   try {
-    let s = sharp(buffer).resize(2000, 2000, { fit: 'inside', withoutEnlargement: true });
-    if (mimetype === 'image/jpeg') s = s.jpeg({ quality: 85 });
-    else if (mimetype === 'image/webp') s = s.webp({ quality: 85 });
-    else if (mimetype === 'image/png') s = s.png({ compressionLevel: 8 });
+    let s = sharp(buffer).rotate().resize(2000, 2000, { fit: 'inside', withoutEnlargement: true });
+    if (mimetype === 'image/jpeg') {
+      // Flatten any transparency onto white; JPEG has no alpha channel.
+      s = s.flatten({ background: '#ffffff' }).jpeg({ quality: 85 });
+    } else if (mimetype === 'image/webp') {
+      // WebP preserves alpha natively.
+      s = s.webp({ quality: 85 });
+    } else if (mimetype === 'image/png') {
+      // Keep transparency; higher compression level reduces file size.
+      s = s.png({ compressionLevel: 9 });
+    }
     return await s.toBuffer();
   } catch (err) {
     logger.warn('image_resize_failed', { error_message: err.message });
@@ -398,6 +422,13 @@ router.post('/upload', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, han
         const processedBuf = await resizeForWeb(file.buffer, file.mimetype);
         fs.writeFileSync(filepath, processedBuf);
 
+        // Consistency: only create the DB record once the file is durably on
+        // disk. If DB insert fails, the catch block removes the orphan file.
+        const writtenStat = fs.statSync(filepath);
+        if (writtenStat.size !== processedBuf.length) {
+          throw new Error('Zápis souboru se nezdařil (kontrola velikosti)');
+        }
+
         const result = await db.prepare(`
           INSERT INTO gallery_images (folder_id, image_url, identifier, title, alt_text, display_order, file_size_bytes)
           VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -424,5 +455,37 @@ router.post('/upload', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, han
     res.status(500).json({ error: err.message });
   }
 });
+
+// ============================================================
+// Startup reconciliation (non-destructive safety net)
+// ============================================================
+
+// Best-effort check run once at boot: for every Gallery DB record whose file is
+// missing from the persistent upload dir but still present in the legacy
+// container dir (e.g. files created before the persistent storage change), copy
+// it across so the record never dangles. Logs records that are missing in BOTH
+// locations so future storage issues surface early.
+export async function reconcileLegacyGalleryFiles() {
+  try {
+    const images = await db.prepare('SELECT id, image_url FROM gallery_images').all();
+    for (const img of images) {
+      if (!img.image_url || !img.image_url.startsWith('/uploads/gallery/')) continue;
+      const name = path.basename(img.image_url);
+      const target = path.join(UPLOAD_DIR, name);
+      const legacy = path.join(LEGACY_UPLOAD_DIR, name);
+      if (fs.existsSync(target)) continue;
+      if (fs.existsSync(legacy)) {
+        fs.copyFileSync(legacy, target);
+        logger.warn('gallery_reconciled_from_legacy', { id: img.id, filename: name });
+      } else {
+        logger.warn('gallery_file_missing', { id: img.id, image_url: img.image_url });
+      }
+    }
+  } catch (err) {
+    logger.fromError('gallery_reconcile_error', err);
+  }
+}
+
+export const GALLERY_UPLOAD_DIR = UPLOAD_DIR;
 
 export default router;

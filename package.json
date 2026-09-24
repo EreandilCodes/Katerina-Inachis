@@ -10,7 +10,9 @@
     "test:e2e": "node tests/e2e.mjs",
     "test:intros": "node tests/page-intros.mjs",
     "test:longtext": "node tests/long-text.mjs",
-    "test:menu": "node tests/menu.mjs"
+    "test:menu": "node tests/menu.mjs",
+    "test:homepage": "node tests/homepage.mjs",
+    "test:gallery": "node tests/gallery.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

@@ -10,6 +10,8 @@ Personal website for showcasing texts, artworks, jewelry, blog, and a friends ne
 npm install              # Install dependencies
 npm start                # Production: node backend/server.js
 npm run dev              # Development with nodemon
+npm run test:homepage    # Homepage newest-tile rows (tests/homepage.mjs)
+npm run test:gallery     # Gallery optimization + persistence (tests/gallery.mjs)
 ```
 
 **Access Points:**
@@ -239,6 +241,41 @@ class XManager {
 
 ---
 
+## Gallery Upload Storage (persistent)
+
+Uploaded Gallery images are optimized with sharp and stored on the **persistent
+volume**, not in Git and not in the ephemeral container filesystem.
+
+- Upload dir resolution (`backend/routes/gallery.js` `resolveUploadDir()`):
+  `GALLERY_UPLOAD_DIR` env → else `/data/uploads/gallery` when `SQLITE_PATH`
+  starts with `/data/` (Railway volume) → else `frontend/uploads/gallery`
+  (local dev default, gitignored). On a Postgres deployment there is no
+  `SQLITE_PATH`, so set `GALLERY_UPLOAD_DIR` explicitly.
+- `backend/server.js` serves `GALLERY_UPLOAD_DIR` at `/uploads/gallery/<file>`
+  (mounted before the generic `express.static(frontend)`).
+- `image_url` is always stored as `/uploads/gallery/<filename>` — DB format is
+  unchanged, no migration, no path rewrites.
+- Upload flow: build buffer → sharp-optimize → write file → verify size on disk
+  → insert DB record → on DB error unlink the orphan file.
+- Optimization: auto-orient (EXIF), resize to ≤2000px (`fit: inside`,
+  `withoutEnlargement`), JPEG q85 flattened onto white, WebP q85 (alpha kept),
+  PNG `compressionLevel: 9` (alpha kept), animated GIF passthrough. Max upload
+  50MB, MIME allowlist jpeg/png/webp/gif.
+- Startup `reconcileLegacyGalleryFiles()` (called from `server.js` finally
+  block) is a non-destructive safety net: it copies any DB-referenced file found
+  only in the legacy container dir into the persistent dir and logs records that
+  are missing in BOTH locations.
+
+## Homepage newest-tile rows
+
+`frontend/js/public.js` `renderHomepage()` loads the **list** endpoints
+(`/api/texts|artworks|jewelry|blog|programming`) and renders the newest 4 items
+of each content section in a horizontally scrollable `.scroll-row` (CSS in
+`public.css`: flex, `overflow-x: auto`, scroll-snap, `width: min(280px, 78vw)`
+tiles). Empty sections are omitted; the friends/about/contact sections are
+unchanged. Because slugs are server-derived via `generateSlug(title)`, QA/test
+suites match the seeded items by title prefix, not by slug.
+
 ## Known Rules
 
 1. ALL routes use `logger` — no console.log in backend
@@ -246,7 +283,8 @@ class XManager {
 3. `generateSlug()` in every route that needs it
 4. Safe Fetch Pattern on ALL admin JS fetch calls
 5. `esc()` helper in public.js on ALL user content in innerHTML
-6. Gallery upload uses multer.memoryStorage() + sharp
+6. Gallery upload uses multer.memoryStorage() + sharp; files go to the
+   persistent volume dir (see Gallery Upload Storage above)
 7. Port 3004
 8. DB file: `backend/inachis.db`
 9. `"type": "module"` in package.json
