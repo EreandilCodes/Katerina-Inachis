@@ -9,6 +9,21 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Slugs of the system pages that form the site skeleton. They are seeded on
+// every startup (ON CONFLICT DO NOTHING) and can only be hidden, never deleted,
+// so an admin can always recover the core menu. User-created pages (not in this
+// list) are fully deletable.
+export const DEFAULT_PAGE_TITLES = {
+  texty:        'Texty',
+  kresba:       'Kresba a malba',
+  blog:         'Blog',
+  programovani: 'Programování',
+  pratele:      'Přátelé',
+  'o-mne':      'O mně',
+  kontakt:      'Kontakt',
+};
+export const DEFAULT_PAGE_SLUGS = Object.freeze(Object.keys(DEFAULT_PAGE_TITLES));
+
 // ── Mode detection ────────────────────────────────────────────────────────────
 const isPostgres = process.env.DB_PROVIDER === 'postgres';
 
@@ -392,17 +407,7 @@ export async function initDatabase() {
     )
   `);
 
-  const defaultPages = [
-    ['texty',        'Texty'],
-    ['kresba',       'Kresba a malba'],
-    ['blog',         'Blog'],
-    ['programovani', 'Programování'],
-    ['pratele',      'Přátelé'],
-    ['o-mne',        'O mně'],
-    ['kontakt',      'Kontakt'],
-  ];
-
-  for (const [slug, title] of defaultPages) {
+  for (const [slug, title] of Object.entries(DEFAULT_PAGE_TITLES)) {
     await db.prepare(
       `INSERT INTO pages (slug, title, intro_text) VALUES (?, ?, '') ON CONFLICT (slug) DO NOTHING`
     ).run(slug, title);

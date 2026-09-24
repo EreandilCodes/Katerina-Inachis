@@ -1,5 +1,5 @@
 import express from 'express';
-import db from '../database.js';
+import db, { DEFAULT_PAGE_SLUGS } from '../database.js';
 import { AuthMiddleware } from '../middleware/auth.js';
 import { logger } from '../logger.js';
 
@@ -7,6 +7,13 @@ const router = express.Router();
 
 const MAX_INTRO_LENGTH = 20000;
 const MAX_TITLE_LENGTH = 200;
+
+// Czech plural: 1 → one, 2–4 → few, 5+ → many.
+function pluralCs(n, one, few, many) {
+  if (n === 1) return one;
+  if (n >= 2 && n <= 4) return few;
+  return many;
+}
 
 const PAGE_SELECT = `
   SELECT p.id, p.slug, p.title, p.intro_text, p.is_visible, p.sort_order, p.category_id,
@@ -149,13 +156,36 @@ router.put('/:slug', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async
   }
 });
 
-// DELETE /api/pages/:slug — admin-only cleanup (not exposed in the UI;
-// hiding is the intended way to remove a page from the menu).
+// DELETE /api/pages/:slug — admin-only permanent deletion.
+// Two dependency rules keep the public navigation and admin UI consistent:
+//   1. System pages (the seeded site skeleton, DEFAULT_PAGE_SLUGS) can only be
+//      hidden — they are recreated on every startup anyway, so deleting them
+//      would silently resurrect empty on the next deploy.
+//   2. A page that still has subcategories (categories.page_slug) is blocked —
+//      no child category may be left pointing at a parent page that is gone.
+// There is no ON DELETE CASCADE anywhere: deleting a page removes only the page
+// row itself (slug, title, intro_text, menu metadata). Content that references
+// it (subcategories) blocks the deletion instead of being silently deleted.
 router.delete('/:slug', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
-    const result = await db.prepare('DELETE FROM pages WHERE slug = ?').run(req.params.slug);
-    if (result.changes === 0) return res.status(404).json({ error: 'Stránka nenalezena' });
-    logger.info('page_deleted', { slug: req.params.slug });
+    const { slug } = req.params;
+
+    const page = await db.prepare('SELECT id, slug, title FROM pages WHERE slug = ?').get(slug);
+    if (!page) return res.status(404).json({ error: 'Stránka nenalezena' });
+
+    if (DEFAULT_PAGE_SLUGS.includes(slug)) {
+      return res.status(409).json({ error: 'Systémovou stránku nelze smazat — lze ji pouze skrýt.' });
+    }
+
+    const childCount = (await db.prepare('SELECT COUNT(*) AS n FROM categories WHERE page_slug = ?').get(slug))?.n || 0;
+    if (childCount > 0) {
+      return res.status(409).json({
+        error: `Tuto stránku nelze smazat, protože obsahuje ${childCount} ${pluralCs(childCount, 'podkategorii', 'podkategorie', 'podkategorií')}. Nejprve je přesuňte nebo odstraňte.`,
+      });
+    }
+
+    await db.prepare('DELETE FROM pages WHERE id = ?').run(page.id);
+    logger.info('page_deleted', { slug });
     res.json({ message: 'Stránka odstraněna' });
   } catch (err) {
     logger.fromError('pages_delete_error', err);

@@ -18,6 +18,13 @@ function normalizeVisibility(value) {
   return value === false || value === 0 || value === '0' ? 0 : 1;
 }
 
+// Czech plural: 1 → one, 2–4 → few, 5+ → many.
+function pluralCs(n, one, few, many) {
+  if (n === 1) return one;
+  if (n >= 2 && n <= 4) return few;
+  return many;
+}
+
 function isValidSlug(slug) {
   return typeof slug === 'string' && SLUG_RE.test(slug);
 }
@@ -201,19 +208,36 @@ router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (
   }
 });
 
-// DELETE /api/categories/:id — admin-only cleanup (not exposed in the UI;
-// visibility is the intended way to remove a category from view). Pages that
-// referenced the category are detached, not deleted.
+// DELETE /api/categories/:id — admin-only permanent deletion.
+// Deleting is destructive and deliberately NOT a cascade: a category can only
+// be removed once nothing references it — no texts keep its name and no menu
+// item is still assigned to it. The caller must move/remove that content first.
+// Hidden ≠ deleted: hiding stays the non-destructive way to remove a category
+// from the public navigation.
 router.delete('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ error: 'Neplatný identifikátor kategorie' });
 
-    const result = await db.prepare('DELETE FROM categories WHERE id = ?').run(id);
-    if (result.changes === 0) return res.status(404).json({ error: 'Kategorie nenalezena' });
+    const category = await db.prepare(`${CATEGORY_SELECT} WHERE id = ?`).get(id);
+    if (!category) return res.status(404).json({ error: 'Kategorie nenalezena' });
 
-    await db.prepare('UPDATE pages SET category_id = NULL WHERE category_id = ?').run(id);
-    logger.info('category_deleted', { id });
+    const textCount = (await db.prepare('SELECT COUNT(*) AS n FROM texts WHERE category = ?').get(category.name))?.n || 0;
+    if (textCount > 0) {
+      return res.status(409).json({
+        error: `Tuto kategorii nelze smazat, protože obsahuje ${textCount} ${pluralCs(textCount, 'článek', 'články', 'článků')}. Nejprve je přesuňte do jiné kategorie nebo odstraňte.`,
+      });
+    }
+
+    const pageCount = (await db.prepare('SELECT COUNT(*) AS n FROM pages WHERE category_id = ?').get(id))?.n || 0;
+    if (pageCount > 0) {
+      return res.status(409).json({
+        error: `Tuto kategorii nelze smazat, protože je přiřazena k ${pageCount} ${pluralCs(pageCount, 'položce menu', 'položkám menu', 'položkám menu')}. Nejprve odeberte kategorii z příslušné položky menu.`,
+      });
+    }
+
+    await db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+    logger.info('category_deleted', { id, name: category.name });
     res.json({ message: 'Kategorie odstraněna' });
   } catch (err) {
     logger.fromError('categories_delete_error', err);

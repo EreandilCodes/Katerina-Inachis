@@ -1098,6 +1098,15 @@ async function syncPublicNav() {
       pages.filter(p => p.is_visible && Number(p.category_is_visible) !== 0).map(p => p.slug)
     );
 
+    // Drop menu links we appended earlier whose page no longer exists (the
+    // admin deleted it) — the navigation must never point at a dead destination.
+    document.querySelectorAll(
+      '#desktopNav a[data-menu-page], #mobileNav a[data-menu-page]'
+    ).forEach(a => {
+      const first = (a.getAttribute('href') || '').split('/').filter(Boolean)[0];
+      if (first && !knownSlugs.has(first)) a.remove();
+    });
+
     // Hide any nav link whose first path segment maps to a hidden page or a
     // hidden category (applies to the static menu AND to appended items).
     document.querySelectorAll(

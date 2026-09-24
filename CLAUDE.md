@@ -295,6 +295,33 @@ tiles). Empty sections are omitted; the friends/about/contact sections are
 unchanged. Because slugs are server-derived via `generateSlug(title)`, QA/test
 suites match the seeded items by title prefix, not by slug.
 
+## Safe deletion (categories & pages) — Admin Přehled
+
+`DELETE /api/categories/:id` and `DELETE /api/pages/:slug` (admin-only) are the
+delete actions behind the Smazat button in Admin → Přehled (Kategorie a stránky).
+
+- Deletion is **not a cascade** and must never be turned into one. A record is
+  only deleted once nothing references it; otherwise the endpoint returns
+  `409` with a Czech explanation and the frontend keeps the row visible (toast
+  shows the reason; `#confirmModalOverlay` in `frontend/admin.html`, logic in
+  `frontend/admin/menu.js` `deleteConfirmed`). There is no
+  `ON DELETE CASCADE` in the schema.
+- Category delete is blocked while any `texts.category` equals the category
+  `name`, or any `pages.category_id` references it (move/remove that content
+  first). Pages are detached on category RENAME only (that cascades `category`
+  name → kept texts), never on delete.
+- Page delete is blocked for the seeded system skeleton
+  (`DEFAULT_PAGE_SLUGS` in `backend/database.js` → `texty`, `kresba`, `blog`,
+  `programovani`, `pratele`, `o-mne`, `kontakt`) since those rows are recreated
+  on every startup — they can only be hidden, not deleted. It is also blocked
+  while any `categories.page_slug` child subcategory references the page.
+- Hiding is the non-destructive way to remove something from the public
+  navigation. Hidden ≠ deleted (hidden subcategories like `/texty/knihy` still
+  resolve).
+- `frontend/js/public.js` `syncPublicNav()` removes stale `data-menu-page`
+  links whose page no longer exists, so the public nav never points at a
+  deleted page.
+
 ## Known Rules
 
 1. ALL routes use `logger` — no console.log in backend

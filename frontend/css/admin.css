@@ -492,6 +492,10 @@ ul, ol { list-style: none; }
   box-shadow: 0 20px 60px rgba(18,14,25,0.25);
 }
 
+.modal--sm {
+  max-width: 420px;
+}
+
 .modal-header {
   padding: 1.25rem 1.5rem 1rem;
   border-bottom: 1px solid var(--border);

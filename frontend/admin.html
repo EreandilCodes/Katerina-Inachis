@@ -1157,6 +1157,26 @@
   </div>
 </div>
 
+<!-- ── Destructive-action confirmation (categories & menu items) ── -->
+<div class="modal-overlay hidden" id="confirmModalOverlay">
+  <div class="modal modal--sm">
+    <div class="modal-header">
+      <h3 id="confirmModalTitle">Smazat</h3>
+      <button class="modal-close" onclick="window.admin.managers.menu?.closeConfirm()">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirmModalMessage" style="font-family:var(--font-body);font-size:0.9rem;color:var(--ink);line-height:1.7"></p>
+      <p style="font-family:var(--font-body);font-size:0.8rem;color:var(--ink-dim);line-height:1.6;margin-top:0.5rem">
+        Tato akce může být nevratná.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-admin btn-admin--outline" onclick="window.admin.managers.menu?.closeConfirm()">Zrušit</button>
+      <button type="button" class="btn-admin btn-admin--danger" id="confirmDeleteBtn" onclick="window.admin.managers.menu?.deleteConfirmed()">Smazat</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Gallery Upload Handler ──────────────────────────────── -->
 <script>
   document.getElementById('galleryUploadInput')?.addEventListener('change', async (e) => {

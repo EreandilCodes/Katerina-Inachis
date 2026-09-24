@@ -97,6 +97,7 @@ export class MenuManager {
         <td class="td-actions">
           <button class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.menu.openCategoryModal(${c.id})">Upravit</button>
           <button class="btn-admin ${c.is_visible ? 'btn-admin--outline' : 'btn-admin--primary'} btn-admin--sm" onclick="window.admin.managers.menu.toggleCategoryVisibility(${c.id})">${c.is_visible ? 'Skrýt' : 'Zobrazit'}</button>
+          <button class="btn-admin btn-admin--danger btn-admin--sm" onclick="window.admin.managers.menu.handleDeleteCategory(${c.id})">Smazat</button>
         </td>
       </tr>`;
   }
@@ -123,6 +124,7 @@ export class MenuManager {
         <td class="td-actions">
           <button class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.menu.openPageModal(${p.id})">Upravit</button>
           <button class="btn-admin ${rowVisible ? 'btn-admin--outline' : 'btn-admin--primary'} btn-admin--sm" onclick="window.admin.managers.menu.togglePageVisibility(${p.id})">${rowVisible ? 'Skrýt' : 'Zobrazit'}</button>
+          <button class="btn-admin btn-admin--danger btn-admin--sm" onclick="window.admin.managers.menu.handleDeletePage(${p.id})">Smazat</button>
         </td>
       </tr>`;
     }).join('');
@@ -339,6 +341,89 @@ export class MenuManager {
       await this.loadPages();
       this.render();
     } catch (err) {
+      this.admin.showNotification(`Chyba: ${err.message}`, 'error');
+    }
+  }
+
+  // ── Deletion (destructive — always goes through the confirm modal) ──
+  // Two distinct operations:
+  //   Skrýt/Zobrazit — visibility flag, preserves the record and its content.
+  //   Smazat         — permanent, only allowed by the backend once nothing
+  //                     depends on the record; a dependency blocks it (409)
+  //                     with an explanation instead of cascading content.
+  handleDeleteCategory(id) {
+    const cat = this.categories.find((c) => c.id === id);
+    if (!cat) return;
+    this.openConfirm(
+      'Smazat kategorii',
+      [`Opravdu chcete smazat kategorii „${cat.name}“?`],
+      () => this.deleteCategory(id)
+    );
+  }
+
+  handleDeletePage(id) {
+    const page = this.pages.find((p) => p.id === id);
+    if (!page) return;
+    this.openConfirm(
+      'Smazat položku menu',
+      [`Opravdu chcete smazat položku menu „${page.title || page.slug}“ (/${page.slug})?`],
+      () => this.deletePage(id)
+    );
+  }
+
+  // Shared DELETE request using the Safe Fetch Pattern; throws with the
+  // backend's message (e.g. a dependency-blocked 409) without mutating state.
+  async requestDelete(url) {
+    const response = await fetch(url, { method: 'DELETE', headers: this.auth.getAuthHeaders() });
+    const ct = response.headers.get('content-type');
+    const body = ct?.includes('application/json') ? await response.json() : { error: await response.text() };
+    if (!response.ok) throw new Error(body.error || 'Request failed');
+    return body;
+  }
+
+  async deleteCategory(id) {
+    await this.requestDelete(`/api/categories/${id}`);
+    this.admin.showNotification('Kategorie odstraněna');
+    await this.loadCategories();
+    this.render();
+  }
+
+  async deletePage(id) {
+    const page = this.pages.find((p) => p.id === id);
+    if (!page) return;
+    await this.requestDelete(`/api/pages/${encodeURIComponent(page.slug)}`);
+    this.admin.showNotification('Stránka odstraněna');
+    await this.loadPages();
+    this.render();
+  }
+
+  // ── Confirm modal ────────────────────────────────────────
+  openConfirm(title, lines, onConfirm) {
+    this._confirmAction = onConfirm;
+    const overlay = document.getElementById('confirmModalOverlay');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const messageEl = document.getElementById('confirmModalMessage');
+    if (!overlay || !messageEl) return;
+    if (titleEl) titleEl.textContent = title;
+    messageEl.innerHTML = lines.map((l) => `<span style="display:block">${escHtml(l)}</span>`).join('');
+    overlay.classList.remove('hidden');
+    document.getElementById('confirmDeleteBtn')?.focus();
+  }
+
+  closeConfirm() {
+    this._confirmAction = null;
+    document.getElementById('confirmModalOverlay')?.classList.add('hidden');
+  }
+
+  async deleteConfirmed() {
+    const action = this._confirmAction;
+    this.closeConfirm();
+    if (!action) return;
+    try {
+      await action();
+    } catch (err) {
+      // Dependency-blocked deletions (409) land here: show the reason and
+      // keep the record untouched in the table (no reload on failure).
       this.admin.showNotification(`Chyba: ${err.message}`, 'error');
     }
   }
