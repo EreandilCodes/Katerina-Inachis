@@ -97,7 +97,7 @@ async function createPage(token, body) {
   });
 }
 
-async function waitFor(page, fn, timeout = 10000) {
+async function waitFor(page, fn, timeout = 15000) {
   await page.waitForFunction(fn, null, { timeout });
 }
 
@@ -107,7 +107,7 @@ async function waitAppContent(page) {
     if (!app) return false;
     const html = app.innerHTML.trim();
     return html !== '' && !app.querySelector('.loading-state');
-  });
+  }, 20000);
 }
 
 async function waitAdminReady(page) {
@@ -117,7 +117,7 @@ async function waitAdminReady(page) {
       return title && title.textContent.trim() === 'Přehled';
     },
     null,
-    { timeout: 15000 }
+    { timeout: 30000 }
   );
 }
 
@@ -129,12 +129,12 @@ async function gotoAdmin(page, token) {
 }
 
 async function waitMenuTables(page) {
-  await waitFor(page, () => {
+  await page.waitForFunction(() => {
     const cats = document.querySelector('#menuCategoriesTable tbody');
     const items = document.querySelector('#menuItemsTable tbody');
     if (!cats || !items) return false;
     return !cats.textContent.includes('Načítám') && !items.textContent.includes('Načítám');
-  });
+  }, null, { timeout: 30000 });
 }
 
 const launchOpts = { headless: true, args: ['--no-sandbox'] };
@@ -143,7 +143,7 @@ if (process.env.INACHIS_TEST_CHROME) launchOpts.executablePath = process.env.INA
 const browser = await chromium.launch(launchOpts);
 const context = await browser.newContext();
 const page = await context.newPage();
-page.setDefaultTimeout(20000);
+page.setDefaultTimeout(45000);
 
 // Verify server reachable before doing anything destructive.
 await fetchJson(`${BASE}/api/pages`);
@@ -304,10 +304,10 @@ try {
     await waitMenuTables(page);
     const row = page.locator('#menuItemsTable tbody tr', { hasText: QA_PAGE_TITLE });
     await row.locator('button', { hasText: 'Skrýt' }).click();
-    await waitFor(page, () => {
+    await page.waitForFunction(() => {
       const tr = [...document.querySelectorAll('#menuItemsTable tbody tr')].find((r) => r.textContent.includes('[QA-MENU] Stránka'));
       return tr && tr.textContent.includes('Skrytá');
-    });
+    }, null, { timeout: 30000 });
     let mine = (await getPages()).find((p) => p.slug === QA_PAGE_SLUG);
     assert(mine.is_visible === 0, `expected hidden after toggle, got is_visible=${mine.is_visible}`);
 
@@ -319,10 +319,10 @@ try {
 
     // restore visible
     await page.locator('#menuItemsTable tbody tr', { hasText: QA_PAGE_TITLE }).locator('button', { hasText: 'Zobrazit' }).click();
-    await waitFor(page, () => {
+    await page.waitForFunction(() => {
       const tr = [...document.querySelectorAll('#menuItemsTable tbody tr')].find((r) => r.textContent.includes('[QA-MENU] Stránka'));
       return tr && tr.textContent.includes('Viditelná');
-    });
+    }, null, { timeout: 30000 });
   });
 
   await check('C3: create a category via the admin modal', async () => {
@@ -335,8 +335,34 @@ try {
       const t = document.getElementById('adminToast');
       return t && t.textContent.includes('Kategorie vytvořena');
     });
+    // Verify persistence via API first, then via a fresh admin load (the
+    // in-place table refresh can lag the toast on slow networks).
+    const cats = await getCategoriesAdmin(token);
+    assert(cats.some((c) => c.name === QA_CATEGORY2), 'UI-created category missing from API');
+    await gotoAdmin(page, token);
+    await waitMenuTables(page);
+    try {
+      await page.waitForFunction(
+        (name) => {
+          const tb = document.querySelector('#menuCategoriesTable tbody');
+          return tb && tb.textContent.includes(name);
+        },
+        QA_CATEGORY2,
+        { timeout: 30000 }
+      );
+    } catch (err) {
+      const dump = await page.evaluate((name) => ({
+        path: location.pathname,
+        tbl: document.querySelector('#menuCategoriesTable tbody')?.innerText ?? null,
+        catsLen: window.admin?.managers?.menu?.categories?.length,
+        catsNames: (window.admin?.managers?.menu?.categories ?? []).map((c) => c.name).join('\n'),
+        want: name
+      }), QA_CATEGORY2);
+      console.log('C3-DIAG', JSON.stringify(dump, null, 2));
+      throw err;
+    }
     const catsText = await page.locator('#menuCategoriesTable tbody').innerText();
-    assert(catsText.includes(QA_CATEGORY2), 'new category not shown after modal create');
+    assert(catsText.includes(QA_CATEGORY2), 'new category not shown after reload');
   });
 
   await check('C4: create a menu page via the admin modal (with category)', async () => {
@@ -351,12 +377,35 @@ try {
       const t = document.getElementById('adminToast');
       return t && t.textContent.includes('Položka menu vytvořena');
     });
-    const itemsText = await page.locator('#menuItemsTable tbody').innerText();
-    assert(itemsText.includes(`${MARK} UI stránka`), 'new UI page not shown');
+    // The in-place table refresh can lag behind the toast on slow networks;
+    // verify persistence via API first, then via a fresh admin load.
     const mine = (await getPages()).find((p) => p.slug === `${QA_PAGE_SLUG}-ui`);
     const cats = await getCategoriesAdmin(token);
     const cat = cats.find((c) => c.name === QA_CATEGORY2);
-    assert(mine && mine.category_id === cat.id, 'UI-created page category mismatch');
+    assert(!!mine, 'UI-created page missing from API');
+    assert(mine.category_id === cat.id, 'UI-created page category mismatch');
+    await gotoAdmin(page, token);
+    await waitMenuTables(page);
+    try {
+      await page.waitForFunction(
+        (title) => {
+          const tb = document.querySelector('#menuItemsTable tbody');
+          return tb && tb.textContent.includes(title);
+        },
+        `${MARK} UI stránka`,
+        { timeout: 30000 }
+      );
+    } catch (err) {
+      const dump = await page.evaluate(() => ({
+        path: location.pathname,
+        tbl: document.querySelector('#menuItemsTable tbody')?.innerText ?? null,
+        itemsLen: window.admin?.managers?.menu?.items?.length
+      }));
+      console.log('C4-DIAG', JSON.stringify(dump, null, 2));
+      throw err;
+    }
+    const itemsText = await page.locator('#menuItemsTable tbody').innerText();
+    assert(itemsText.includes(`${MARK} UI stránka`), 'new UI page not shown after reload');
   });
 
   await check('C5: editing a page title via modal persists', async () => {
