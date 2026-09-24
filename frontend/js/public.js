@@ -535,6 +535,13 @@ async function renderTextRoute(s1) {
   return renderTextDetail(s1);
 }
 
+// Perex (excerpt) renders above the cover image in every post detail:
+// Title → Perex → Image → Main content. An empty excerpt renders nothing, so
+// posts without a perex keep Title → Image → Content with no empty block.
+function detailExcerptHtml(excerpt) {
+  return excerpt ? `<p class="detail-excerpt">${esc(excerpt)}</p>` : '';
+}
+
 async function renderTextDetail(slug) {
   app.showLoading();
   const i = window.t || (k => k);
@@ -550,6 +557,7 @@ async function renderTextDetail(slug) {
             <hr class="ornament-line">
             <div class="detail-meta">${fmtDate(t.published_at || t.created_at)}</div>
           </div>
+          ${detailExcerptHtml(t.excerpt)}
           ${t.cover_image ? `<div class="detail-cover"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}"></div>` : ''}
           <div class="text-content">${t.content || '<p>' + i('content.unavailable') + '</p>'}</div>
         </div>
@@ -738,6 +746,7 @@ async function renderBlogPost(slug) {
             <hr class="ornament-line">
             <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
           </div>
+          ${detailExcerptHtml(b.excerpt)}
           ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
           <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
         </div>
@@ -789,6 +798,7 @@ async function renderProgrammingPost(slug) {
             <hr class="ornament-line">
             <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
           </div>
+          ${detailExcerptHtml(b.excerpt)}
           ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
           <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
         </div>
@@ -886,6 +896,7 @@ async function renderFriendPost(friendSlug, postSlug) {
             <hr class="ornament-line">
             <div class="detail-meta">${fmtDate(post.published_at || post.created_at)}</div>
           </div>
+          ${detailExcerptHtml(post.excerpt)}
           ${post.cover_image ? `<div class="detail-cover"><img src="${esc(post.cover_image)}" alt="${esc(post.title)}"></div>` : ''}
           ${post.content ? `<div class="text-content">${post.content}</div>` : ''}
           ${images.length > 1 ? `

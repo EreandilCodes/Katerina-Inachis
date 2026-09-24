@@ -734,6 +734,19 @@ button {
   object-fit: cover;
 }
 
+/* Perex (excerpt) sits between the title and the cover image, so the public
+   post layout reads Title → Perex → Image → Main content on every viewport. */
+.detail-excerpt {
+  max-width: var(--max-reading);
+  margin: 0 auto clamp(2rem, 5vw, 3rem);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+  line-height: var(--lh);
+  color: var(--ink-mid);
+  text-align: center;
+}
+
 /* ── 11. Text Content (rich text) ──────────────────────────── */
 .text-content {
   max-width: var(--max-reading);
