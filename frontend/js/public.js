@@ -116,10 +116,7 @@ const app = {
     switch (s0) {
       case 'texty':
         if (!s1)             return this.renderTextsList();
-        if (s1 === 'knihy')  return this.renderTextsFiltered('Knihy',   (window.t || (k=>k))('nav.books'));
-        if (s1 === 'povidky') return this.renderTextsFiltered('Povídky', (window.t || (k=>k))('nav.stories'));
-        if (s1 === 'basne')  return this.renderTextsFiltered('Básně',   (window.t || (k=>k))('nav.poems'));
-        return this.renderTextDetail(s1);
+        return this.renderTextRoute(s1);
       case 'umeni':
         return s1 ? this.renderArtworkDetail(s1) : this.renderArtworksList();
       case 'kresba':
@@ -517,6 +514,25 @@ async function renderTextsFiltered(category, label) {
   } catch (err) {
     app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.generic')}</h3><p>${esc(err.message)}</p></div></div></div>`);
   }
+}
+
+// /texty/<s1> may be a subcategory (data-driven — any category seeded or
+// created in admin with page_slug 'texty' and a slug) or a text detail slug.
+// Hidden subcategories still resolve here (hidden ≠ deleted, direct URLs stay
+// reachable) but are pulled from the nav by syncPublicNav.
+async function renderTextRoute(s1) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const cats = await safeFetch('/api/categories/public/all');
+    const cat = cats.find(c => c.page_slug === 'texty' && c.slug === s1);
+    if (cat) {
+      const labelKey = `nav.${s1}`;
+      const label = i(labelKey) !== labelKey ? i(labelKey) : (cat.name || s1);
+      return renderTextsFiltered(cat.name, label);
+    }
+  } catch { /* fall through to the text detail lookup */ }
+  return renderTextDetail(s1);
 }
 
 async function renderTextDetail(slug) {
@@ -1122,6 +1138,59 @@ async function syncPublicNav() {
         mobileNav?.appendChild(link);
       }
     });
+
+    // ── Texty subcategories (data-driven) ────────────────────────────
+    // Built from /api/categories/public/all: any visible category with a
+    // page_slug becomes a dropdown entry under its parent menu page. Hidden
+    // subcategories are simply not rendered (their URLs still work via the
+    // router). Links are rebuilt on every sync so renamed/hidden/new ones are
+    // reflected and stale ones are removed.
+    let categories = [];
+    try {
+      const cResp = await fetch('/api/categories/public/all');
+      const cCt = cResp.headers.get('content-type');
+      if (cResp.ok && cCt?.includes('application/json')) categories = await cResp.json();
+    } catch { /* non-fatal */ }
+
+    const tFn = window.t || (k => k);
+    const children = (categories || [])
+      .filter(c => c.page_slug && c.is_visible)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.id - b.id));
+    const subLabel = (c) => {
+      const key = `nav.${c.slug}`;
+      const translated = tFn(key);
+      return translated !== key && translated !== undefined ? translated : (c.name || c.slug);
+    };
+
+    document.querySelectorAll('#desktopNav .nav-dropdown a[data-subcat]').forEach(n => n.remove());
+    document.querySelectorAll('#mobileNav a.nav-mobile-sub[data-subcat]').forEach(n => n.remove());
+
+    const subDropdown = document.querySelector('#desktopNav .nav-dropdown');
+    if (subDropdown) {
+      for (const c of children) {
+        const link = document.createElement('a');
+        link.href = `/${c.page_slug}/${c.slug}`;
+        link.textContent = subLabel(c);
+        link.dataset.subcat = '1';
+        subDropdown.appendChild(link);
+      }
+      // Avoid an empty popup when the parent page has no visible subcategories.
+      subDropdown.classList.toggle('nav-hidden', children.length === 0);
+    }
+
+    const textsAnchor = mobileNav && mobileNav.querySelector('a[href="/texty"]');
+    if (textsAnchor) {
+      let ref = textsAnchor;
+      for (const c of children) {
+        const link = document.createElement('a');
+        link.href = `/${c.page_slug}/${c.slug}`;
+        link.textContent = subLabel(c);
+        link.dataset.subcat = '1';
+        link.className = 'nav-mobile-sub';
+        ref.after(link);
+        ref = link;
+      }
+    }
   } catch {
     // Non-fatal: keep the static menu as-is when the sync fails
   }
@@ -1154,14 +1223,14 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Expose globally for onclick handlers
-Object.assign(window, { app, openLightbox, closeLightbox, syncPublicNav, updateStaticI18n, renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
+Object.assign(window, { app, openLightbox, closeLightbox, syncPublicNav, updateStaticI18n, renderHomepage, renderTextsList, renderTextsFiltered, renderTextRoute, renderTextDetail,
   renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
   renderBlogList, renderBlogPost, renderProgrammingList, renderProgrammingPost,
   renderFriendsIndex, renderFriendPage, renderFriendPost,
   renderAbout, renderContact });
 
 // Attach router methods to app
-Object.assign(app, { renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
+Object.assign(app, { renderHomepage, renderTextsList, renderTextsFiltered, renderTextRoute, renderTextDetail,
   renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
   renderBlogList, renderBlogPost, renderProgrammingList, renderProgrammingPost,
   renderFriendsIndex, renderFriendPage, renderFriendPost,
@@ -1173,6 +1242,7 @@ updateStaticI18n();
 
 window.addEventListener('langchange', () => {
   updateStaticI18n();
+  syncPublicNav();
   app.route(location.pathname);
 });
 

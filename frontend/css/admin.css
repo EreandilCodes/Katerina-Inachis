@@ -364,6 +364,42 @@ ul, ol { list-style: none; }
   white-space: nowrap;
 }
 
+/* Category hierarchy rows (Přehled → Kategorie) */
+.admin-table .category-group-row td {
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.admin-table .category-group-header {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--violet);
+}
+
+.admin-table .category-group-slug {
+  font-family: var(--font-body);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-dim);
+  font-size: 0.7rem;
+}
+
+.admin-table .category-slug {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}
+
 .table-img {
   width: 40px;
   height: 40px;

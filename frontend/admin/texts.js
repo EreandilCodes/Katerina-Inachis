@@ -5,12 +5,50 @@ export class TextsManager {
     this.auth  = auth;
     this.admin = admin;
     this.items = [];
+    this.categoryOptions = [];
     this.rte   = null;
     this.rteEn = null;
   }
 
   async init() {
-    await this.loadItems();
+    await Promise.all([this.loadItems(), this.loadCategoryOptions()]);
+  }
+
+  async loadCategoryOptions() {
+    try {
+      const response = await fetch('/api/categories/admin/all', {
+        headers: this.auth.getAuthHeaders()
+      });
+      const contentType = response.headers.get('content-type');
+      if (!response.ok) {
+        const err = contentType?.includes('application/json') ? await response.json() : { error: await response.text() };
+        throw new Error(err.error || 'Request failed');
+      }
+      if (!contentType?.includes('application/json')) throw new Error('Non-JSON response');
+      this.categoryOptions = await response.json();
+    } catch (err) {
+      this.admin.showNotification(`Chyba načítání kategorií: ${err.message}`, 'error');
+      this.categoryOptions = [];
+    }
+  }
+
+  // Subcategories (nested under a menu page, e.g. texty→Povídky) are the
+  // selectable text categories. A current value that no longer matches, e.g.
+  // a legacy free-text category, is preserved as an extra option.
+  buildCategorySelect(item) {
+    const select = document.getElementById('textsForm')?.elements?.category;
+    if (!select) return;
+    const children = (this.categoryOptions || []).filter(c => c.page_slug);
+    const current = item?.category || '';
+    let html = '<option value="">— bez kategorie —</option>';
+    for (const c of children) {
+      html += `<option value="${escHtml(c.name)}">${escHtml(c.name)}</option>`;
+    }
+    if (current && !children.some(c => c.name === current)) {
+      html += `<option value="${escHtml(current)}">${escHtml(current)}</option>`;
+    }
+    select.innerHTML = html;
+    select.value = current;
   }
 
   async loadItems() {
@@ -66,7 +104,7 @@ export class TextsManager {
     form.elements.title.value        = item?.title       || '';
     form.elements.content.value      = item?.content     || '';
     form.elements.cover_image.value  = item?.cover_image || '';
-    form.elements.category.value     = item?.category    || '';
+    this.buildCategorySelect(item);
     form.elements.sort_order.value   = item?.sort_order  ?? 0;
     form.elements.is_featured.checked  = !!item?.is_featured;
     form.elements.is_published.checked = item ? !!item.is_published : true;

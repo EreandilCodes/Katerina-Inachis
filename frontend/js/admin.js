@@ -170,9 +170,9 @@ class AdminController {
             </div>
             <table class="admin-table" id="menuCategoriesTable">
               <thead>
-                <tr><th>Název</th><th>Viditelnost</th><th class="td-actions">Akce</th></tr>
+                <tr><th>Název</th><th>Hlavní</th><th>Slug</th><th>Viditelnost</th><th class="td-actions">Akce</th></tr>
               </thead>
-              <tbody><tr><td colspan="3" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr></tbody>
+              <tbody><tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr></tbody>
             </table>
           </div>
 

@@ -410,15 +410,25 @@ export async function initDatabase() {
   console.log('✅ pages table ready');
 
   // ── Menu categories (additive, backwards-compatible) ──────────────────────
+  // `slug` = URL segment for subcategories (/texty/<slug>); `page_slug` =
+  // slug of the parent menu page this category nests under (e.g. 'texty').
+  // NULL page_slug = top-level menu grouping category; NULL slug = no URL.
   await db.exec(`
     CREATE TABLE IF NOT EXISTS categories (
       id         ${pk},
       name       TEXT NOT NULL UNIQUE,
+      slug       TEXT UNIQUE,
+      page_slug  TEXT,
       is_visible INTEGER DEFAULT 1,
       sort_order INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  // Additive migrations for databases created before these columns existed
+  // (SQLite cannot add a UNIQUE column via ALTER — enforced by the CREATE
+  // TABLE above on fresh databases; slug uniqueness is also checked in code).
+  try { await db.exec('ALTER TABLE categories ADD COLUMN slug TEXT'); } catch (_e) {}
+  try { await db.exec('ALTER TABLE categories ADD COLUMN page_slug TEXT'); } catch (_e) {}
   console.log('✅ categories table ready');
 
   // Pages carry menu metadata. Additive columns with safe defaults: existing
@@ -427,6 +437,30 @@ export async function initDatabase() {
   try { await db.exec('ALTER TABLE pages ADD COLUMN is_visible INTEGER DEFAULT 1'); } catch (_e) {}
   try { await db.exec('ALTER TABLE pages ADD COLUMN sort_order INTEGER DEFAULT 0'); } catch (_e) {}
   console.log('✅ pages menu columns ready');
+
+  // ── Seed the Texty subcategories ──────────────────────────────────────
+  // Knihy / Povídky / Básně have always existed as public nav links, SPA
+  // routes and `texts.category` values, but were never records in this table.
+  // Promoting them here (idempotently — only when neither the slug nor the
+  // exact name already exists) lets the admin manage them like any other
+  // category without duplicating an existing record the admin may have
+  // already created by hand.
+  const textSubcategories = [
+    ['Knihy',   'knihy',   1],
+    ['Povídky', 'povidky', 2],
+    ['Básně',   'basne',   3],
+  ];
+  for (const [name, slug, sortOrder] of textSubcategories) {
+    const existing = await db.prepare(
+      'SELECT id FROM categories WHERE slug = ? OR name = ?'
+    ).get(slug, name);
+    if (!existing) {
+      await db.prepare(
+        'INSERT INTO categories (name, slug, page_slug, is_visible, sort_order) VALUES (?, ?, ?, 1, ?)'
+      ).run(name, slug, 'texty', sortOrder);
+    }
+  }
+  console.log('✅ text subcategories seeded (Knihy, Povídky, Básně)');
 
   // Seed admin user
   const passwordHash = bcrypt.hashSync('admin123', 10);

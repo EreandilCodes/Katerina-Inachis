@@ -413,9 +413,6 @@
             <label class="form-label">Kategorie</label>
             <select class="form-input" name="category">
               <option value="">— bez kategorie —</option>
-              <option value="Knihy">Knihy</option>
-              <option value="Povídky">Povídky</option>
-              <option value="Básně">Básně</option>
             </select>
           </div>
           <div class="form-group">
@@ -1066,6 +1063,25 @@
         <div class="form-group">
           <label class="form-label">Název <span class="required">*</span></label>
           <input class="form-input" type="text" name="name" required maxlength="100" placeholder="např. Tvorba">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hlavní stránka / sekce</label>
+          <select class="form-select" name="page_slug" id="categoryPageSlug">
+            <option value="">— sekce / bez hlavní stránky —</option>
+          </select>
+          <p style="font-family:var(--font-body);font-size:0.75rem;color:var(--ink-dim);margin-top:0.3rem">
+            Vyberte stránku, pod kterou bude kategorie veřejně vystupovat (např. <code>texty</code>).
+            Podkategorie získá vlastní URL a zobrazí se v rozbalovací nabídce dané stránky.
+          </p>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL (slug)</label>
+          <input class="form-input" type="text" name="slug" maxlength="80" placeholder="např. povidky" autocomplete="off">
+          <p style="font-family:var(--font-body);font-size:0.75rem;color:var(--ink-dim);margin-top:0.3rem">
+            Malá písmena, číslice a spojovníky (např. <code>povidky</code> → <code>/texty/povidky</code>).
+            Pokud je zadána hlavní stránka a pole zůstane prázdné, URL se vytvoří z názvu.
+            URL nelze po vytvoření měnit.
+          </p>
         </div>
         <div class="form-row">
           <div class="form-group">

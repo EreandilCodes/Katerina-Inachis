@@ -266,6 +266,25 @@ volume**, not in Git and not in the ephemeral container filesystem.
   only in the legacy container dir into the persistent dir and logs records that
   are missing in BOTH locations.
 
+## Texty subcategories (data-driven)
+
+Knihy / Povídky / Básně are real rows in the `categories` table: `slug`
+(`knihy`/`povidky`/`basne`) is the URL segment and `page_slug='texty'` nests
+them under the Texty menu page. They are seeded idempotently on startup
+(`backend/database.js`) and managed from Admin → Přehled like any category.
+
+- Public nav, `/texty/<slug>` routing and the admin menus are **all
+  data-driven** — nothing about these three names is hardcoded in frontend.
+  Public data comes from `GET /api/categories/public/all` (includes hidden
+  subcategories; hidden ≠ deleted, direct URLs still resolve).
+- `/texty/povidky` lists texts whose `texts.category` equals the category
+  `name`; `/texty/<other>` falls back to a text detail slug.
+- `categories.slug` is immutable after creation; renaming a category cascades
+  to `texts.category`. `generateSlug()` normalises names to slugs client- and
+  server-side (must stay in sync with the one in `routes/texts.js`).
+- i18n keys are `nav.knihy` / `nav.povidky` / `nav.basne` (the old
+  `nav.books/stories/poems` keys no longer exist and must not be reintroduced).
+
 ## Homepage newest-tile rows
 
 `frontend/js/public.js` `renderHomepage()` loads the **list** endpoints

@@ -60,18 +60,45 @@ export class MenuManager {
     const tbody = document.querySelector('#menuCategoriesTable tbody');
     if (!tbody) return;
     if (!this.categories.length) {
-      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--ink-dim);padding:2rem">Žádné kategorie — přidejte první.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2rem">Žádné kategorie — přidejte první.</td></tr>`;
       return;
     }
-    tbody.innerHTML = this.categories.map(c => `
+
+    const topLevel = this.categories.filter(c => !c.page_slug);
+    const children = this.categories.filter(c => c.page_slug);
+    const groups = new Map();
+    for (const c of children) {
+      if (!groups.has(c.page_slug)) groups.set(c.page_slug, []);
+      groups.get(c.page_slug).push(c);
+    }
+
+    const pageTitle = (slug) => {
+      const p = this.pages.find(x => x.slug === slug);
+      return p ? (p.title || p.slug) : slug;
+    };
+
+    const rows = [];
+    for (const c of topLevel) rows.push(this.categoryRow(c));
+    for (const [pageSlug, cats] of groups) {
+      rows.push(`<tr class="category-group-row"><td colspan="5" class="category-group-header">${escHtml(pageTitle(pageSlug))} <span class="category-group-slug">/${escHtml(pageSlug)}</span></td></tr>`);
+      for (const c of cats) rows.push(this.categoryRow(c, pageSlug, pageTitle(pageSlug)));
+    }
+    tbody.innerHTML = rows.join('');
+  }
+
+  categoryRow(c, pageSlug = '', pageTitle = '') {
+    const url = pageSlug && c.slug ? `/${pageSlug}/${c.slug}` : (c.slug ? `/${c.slug}` : '');
+    return `
       <tr>
         <td class="td-title">${escHtml(c.name)}</td>
+        <td>${pageTitle ? escHtml(pageTitle) : '<span style="color:var(--ink-dim)">—</span>'}</td>
+        <td>${url ? `<code class="category-slug">${escHtml(url)}</code>` : '<span style="color:var(--ink-dim)">—</span>'}</td>
         <td><span class="badge ${c.is_visible ? 'badge-published' : 'badge-draft'}">${c.is_visible ? 'Viditelná' : 'Skrytá'}</span></td>
         <td class="td-actions">
           <button class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.menu.openCategoryModal(${c.id})">Upravit</button>
           <button class="btn-admin ${c.is_visible ? 'btn-admin--outline' : 'btn-admin--primary'} btn-admin--sm" onclick="window.admin.managers.menu.toggleCategoryVisibility(${c.id})">${c.is_visible ? 'Skrýt' : 'Zobrazit'}</button>
         </td>
-      </tr>`).join('');
+      </tr>`;
   }
 
   renderPages() {
@@ -115,6 +142,28 @@ export class MenuManager {
     form.elements.sort_order.value = item?.sort_order ?? 0;
     form.elements.is_visible.checked = item ? !!item.is_visible : true;
 
+    // Parent page options
+    const pageSelect = form.elements.page_slug;
+    pageSelect.innerHTML = '<option value="">— sekce / bez hlavní stránky —</option>' +
+      this.pages.map(p => `<option value="${escHtml(p.slug)}">${escHtml(p.title || p.slug)}</option>`).join('');
+    pageSelect.value = item?.page_slug || '';
+
+    // Slug / URL — generated from the name once a parent page is chosen,
+    // immutable after creation (the URL is a public contract).
+    form.elements.slug.value = item?.slug || '';
+    form.elements.slug.disabled = !!item;
+
+    if (!form.dataset.sluggish) {
+      form.dataset.sluggish = '1';
+      const syncSlug = () => {
+        if (this.editCategoryId) return;
+        if (!pageSelect.value) return;
+        form.elements.slug.value = slugify(form.elements.name.value.trim());
+      };
+      form.elements.name.addEventListener('input', syncSlug);
+      pageSelect.addEventListener('change', syncSlug);
+    }
+
     if (!form.dataset.bound) {
       form.dataset.bound = '1';
       form.addEventListener('submit', async (e) => {
@@ -132,10 +181,15 @@ export class MenuManager {
       name: form.elements.name.value.trim(),
       sort_order: Number(form.elements.sort_order.value) || 0,
       is_visible: form.elements.is_visible.checked ? 1 : 0,
+      page_slug: form.elements.page_slug.value || null,
     };
     if (!body.name) {
       this.admin.showNotification('Název kategorie je povinný', 'error');
       return;
+    }
+    if (!this.editCategoryId) {
+      // Only sent when creating — the URL is fixed (immutable) afterwards.
+      body.slug = form.elements.slug.value.trim() || undefined;
     }
     try {
       const url = this.editCategoryId ? `/api/categories/${this.editCategoryId}` : '/api/categories';
@@ -297,4 +351,13 @@ export class MenuManager {
 function escHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function slugify(name) {
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }

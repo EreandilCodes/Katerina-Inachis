@@ -11,6 +11,7 @@
     "test:intros": "node tests/page-intros.mjs",
     "test:longtext": "node tests/long-text.mjs",
     "test:menu": "node tests/menu.mjs",
+    "test:textsubs": "node tests/text-categories.mjs",
     "test:homepage": "node tests/homepage.mjs",
     "test:gallery": "node tests/gallery.mjs"
   },
