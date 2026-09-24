@@ -1059,6 +1059,73 @@ function render404() {
 }
 
 // ============================================================
+// Menu sync — respect category/page visibility in public nav
+// ============================================================
+// Hidden items are not rendered in public navigation while their
+// content stays intact and reachable via direct URL.
+async function syncPublicNav() {
+  try {
+    const response = await fetch('/api/pages');
+    const contentType = response.headers.get('content-type');
+    if (!response.ok) {
+      const err = contentType?.includes('application/json') ? await response.json() : { error: await response.text() };
+      throw new Error(err.error || 'Request failed');
+    }
+    if (!contentType?.includes('application/json')) throw new Error('Server returned non-JSON response');
+    const pages = await response.json();
+    if (!Array.isArray(pages) || !pages.length) return;
+
+    const knownSlugs = new Set(pages.map(p => p.slug));
+    const visibleSlugs = new Set(
+      pages.filter(p => p.is_visible && Number(p.category_is_visible) !== 0).map(p => p.slug)
+    );
+
+    // Hide any nav link whose first path segment maps to a hidden page or a
+    // hidden category (applies to the static menu AND to appended items).
+    document.querySelectorAll(
+      '#desktopNav > a, #desktopNav .nav-item--dropdown > a, .nav-mobile a[href], .site-footer a[href], .site-footer__inner a[href]'
+    ).forEach(a => {
+      const first = (a.getAttribute('href') || '').split('/').filter(Boolean)[0];
+      if (!first || !knownSlugs.has(first)) return;
+      a.classList.toggle('nav-hidden', !visibleSlugs.has(first));
+    });
+    // Desktop dropdown wrapper follows its parent heading
+    const dropdown = document.querySelector('#desktopNav .nav-item--dropdown');
+    if (dropdown) dropdown.classList.toggle('nav-hidden', !visibleSlugs.has('texty'));
+
+    // Append newly visible menu pages (e.g. a page created via the admin) to
+    // desktop + mobile navigation, ordered by sort_order.
+    const additions = pages
+      .filter(p => visibleSlugs.has(p.slug))
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.id - b.id));
+
+    const desktopNav = document.getElementById('desktopNav');
+    const mobileNav = document.getElementById('mobileNav');
+    additions.forEach(p => {
+      const title = (p.title && p.title.trim()) ? p.title.trim() : p.slug;
+      const existsDesktop = desktopNav && desktopNav.querySelector(`a[href="/${p.slug}"]`);
+      if (!existsDesktop) {
+        const link = document.createElement('a');
+        link.href = `/${p.slug}`;
+        link.textContent = title;
+        link.dataset.menuPage = '1';
+        desktopNav?.appendChild(link);
+      }
+      const existsMobile = mobileNav && mobileNav.querySelector(`a[href="/${p.slug}"]`);
+      if (!existsMobile) {
+        const link = document.createElement('a');
+        link.href = `/${p.slug}`;
+        link.textContent = title;
+        link.dataset.menuPage = '1';
+        mobileNav?.appendChild(link);
+      }
+    });
+  } catch {
+    // Non-fatal: keep the static menu as-is when the sync fails
+  }
+}
+
+// ============================================================
 // Lightbox
 // ============================================================
 function openLightbox(src, alt) {
@@ -1085,7 +1152,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Expose globally for onclick handlers
-Object.assign(window, { app, openLightbox, closeLightbox, updateStaticI18n, renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
+Object.assign(window, { app, openLightbox, closeLightbox, syncPublicNav, updateStaticI18n, renderHomepage, renderTextsList, renderTextsFiltered, renderTextDetail,
   renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
   renderBlogList, renderBlogPost, renderProgrammingList, renderProgrammingPost,
   renderFriendsIndex, renderFriendPage, renderFriendPost,
@@ -1108,3 +1175,6 @@ window.addEventListener('langchange', () => {
 });
 
 app.route(location.pathname);
+
+// Apply menu visibility to the public navigation (non-fatal)
+syncPublicNav();

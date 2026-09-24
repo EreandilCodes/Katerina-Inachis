@@ -409,6 +409,25 @@ export async function initDatabase() {
   }
   console.log('✅ pages table ready');
 
+  // ── Menu categories (additive, backwards-compatible) ──────────────────────
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS categories (
+      id         ${pk},
+      name       TEXT NOT NULL UNIQUE,
+      is_visible INTEGER DEFAULT 1,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log('✅ categories table ready');
+
+  // Pages carry menu metadata. Additive columns with safe defaults: existing
+  // pages stay visible (is_visible = 1), order 0, no category (category_id NULL).
+  try { await db.exec('ALTER TABLE pages ADD COLUMN category_id INTEGER'); } catch (_e) {}
+  try { await db.exec('ALTER TABLE pages ADD COLUMN is_visible INTEGER DEFAULT 1'); } catch (_e) {}
+  try { await db.exec('ALTER TABLE pages ADD COLUMN sort_order INTEGER DEFAULT 0'); } catch (_e) {}
+  console.log('✅ pages menu columns ready');
+
   // Seed admin user
   const passwordHash = bcrypt.hashSync('admin123', 10);
   await db.prepare(

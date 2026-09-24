@@ -9,7 +9,8 @@
     "dev": "nodemon backend/server.js",
     "test:e2e": "node tests/e2e.mjs",
     "test:intros": "node tests/page-intros.mjs",
-    "test:longtext": "node tests/long-text.mjs"
+    "test:longtext": "node tests/long-text.mjs",
+    "test:menu": "node tests/menu.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

@@ -139,6 +139,10 @@ button {
 }
 
 /* Nav */
+.nav-hidden {
+  display: none !important;
+}
+
 .nav-menu {
   display: flex;
   align-items: center;

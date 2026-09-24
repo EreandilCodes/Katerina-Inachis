@@ -14,6 +14,7 @@ import { FriendPostsManager } from '../admin/friend-posts.js';
 import { GalleryManager }     from '../admin/gallery.js';
 import { SettingsManager }    from '../admin/settings.js';
 import { PagesManager }       from '../admin/pages.js';
+import { MenuManager }        from '../admin/menu.js';
 
 const SECTION_TITLES = {
   overview:     'Přehled',
@@ -69,6 +70,8 @@ class AdminController {
 
     if (name === 'overview') {
       this.renderOverview();
+      this.managers.menu ??= new MenuManager(this.auth, this);
+      this.managers.menu.init();
       return;
     }
 
@@ -143,13 +146,49 @@ class AdminController {
     const el = document.getElementById('overviewSection');
     if (!el) return;
     el.innerHTML = `
-      <div style="max-width:600px">
-        <p style="font-family:var(--font-display);font-weight:300;font-size:1.4rem;color:var(--violet);letter-spacing:0.04em;margin-bottom:1rem">
-          Vítejte v administraci Inachis.
-        </p>
-        <p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);line-height:1.7">
-          Pomocí postranní navigace spravujte obsah svého webu — texty, díla, šperky, blog, přátele a galerii.
-        </p>
+      <div style="max-width:960px">
+        <div style="max-width:600px">
+          <p style="font-family:var(--font-display);font-weight:300;font-size:1.4rem;color:var(--violet);letter-spacing:0.04em;margin-bottom:1rem">
+            Vítejte v administraci Inachis.
+          </p>
+          <p style="font-family:var(--font-body);font-weight:300;color:var(--ink-mid);line-height:1.7">
+            Pomocí postranní navigace spravujte obsah svého webu — texty, díla, šperky, blog, přátele a galerii.
+          </p>
+        </div>
+
+        <div style="margin-top:2.5rem">
+          <h3 style="font-family:var(--font-display);font-weight:600;font-size:1.15rem;color:var(--violet);letter-spacing:0.03em">Kategorie a stránky / Menu</h3>
+          <p style="font-family:var(--font-body);font-size:0.85rem;color:var(--ink-mid);line-height:1.7;margin-top:0.4rem">
+            Spravujte hlavní menu webu. Skryté položky zmizí z veřejné navigace, ale jejich obsah zůstává zachován
+            a zůstává dostupný přímou adresou (URL).
+          </p>
+
+          <div style="margin-top:2rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;gap:1rem;flex-wrap:wrap">
+              <strong style="font-family:var(--font-body);font-size:0.85rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-mid)">Kategorie / hlavní sekce</strong>
+              <button class="btn-admin btn-admin--primary btn-admin--sm" onclick="window.admin.managers.menu?.openCategoryModal()">+ Přidat kategorii</button>
+            </div>
+            <table class="admin-table" id="menuCategoriesTable">
+              <thead>
+                <tr><th>Název</th><th>Viditelnost</th><th class="td-actions">Akce</th></tr>
+              </thead>
+              <tbody><tr><td colspan="3" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr></tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:2.5rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;gap:1rem;flex-wrap:wrap">
+              <strong style="font-family:var(--font-body);font-size:0.85rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-mid)">Položky menu / stránky</strong>
+              <button class="btn-admin btn-admin--primary btn-admin--sm" onclick="window.admin.managers.menu?.openPageModal()">+ Přidat položku menu</button>
+            </div>
+            <table class="admin-table" id="menuItemsTable">
+              <thead>
+                <tr><th>Název</th><th>Kategorie</th><th>Viditelnost</th><th class="td-actions">Akce</th></tr>
+              </thead>
+              <tbody><tr><td colspan="4" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>`;
   }
 

@@ -5,18 +5,29 @@ import { logger } from '../logger.js';
 
 const router = express.Router();
 
-const ALLOWED_SLUGS = new Set([
-  'texty', 'kresba', 'blog', 'programovani', 'pratele', 'o-mne', 'kontakt'
-]);
-
 const MAX_INTRO_LENGTH = 20000;
+const MAX_TITLE_LENGTH = 200;
 
-// GET /api/pages — public list of page intro texts
-router.get('/', async (req, res) => {
+const PAGE_SELECT = `
+  SELECT p.id, p.slug, p.title, p.intro_text, p.is_visible, p.sort_order, p.category_id,
+         c.name AS category_name, COALESCE(c.is_visible, 1) AS category_is_visible
+  FROM pages p
+  LEFT JOIN categories c ON c.id = p.category_id
+`;
+
+function normalizeVisibility(value) {
+  return value === false || value === 0 || value === '0' ? 0 : 1;
+}
+
+function isValidSlug(slug) {
+  return /^[a-z0-9][a-z0-9-]{0,79}$/.test(slug);
+}
+
+// GET /api/pages — public list (intro texts + menu metadata; visibility is
+// respected by the public navigation, hidden pages stay directly accessible)
+router.get('/', async (_req, res) => {
   try {
-    const rows = await db.prepare(
-      `SELECT slug, title, intro_text FROM pages ORDER BY id`
-    ).all();
+    const rows = await db.prepare(`${PAGE_SELECT} ORDER BY p.id`).all();
     res.json(rows);
   } catch (err) {
     logger.fromError('pages_list_error', err);
@@ -24,12 +35,10 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/pages/:slug — public single page intro text
+// GET /api/pages/:slug — public single page
 router.get('/:slug', async (req, res) => {
   try {
-    const page = await db.prepare(
-      `SELECT slug, title, intro_text FROM pages WHERE slug = ?`
-    ).get(req.params.slug);
+    const page = await db.prepare(`${PAGE_SELECT} WHERE p.slug = ?`).get(req.params.slug);
     if (!page) return res.status(404).json({ error: 'Stránka nenalezena' });
     res.json(page);
   } catch (err) {
@@ -38,34 +47,118 @@ router.get('/:slug', async (req, res) => {
   }
 });
 
-// PUT /api/pages/:slug — admin updates page intro text
-router.put('/:slug', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
+// POST /api/pages — admin creates a new menu item / page.
+// Slug is the URL path (first segment, e.g. "umeni"); the existing router
+// decides what a path renders. Visibility controls the public navigation only.
+router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
-    const { slug } = req.params;
-    const { intro_text } = req.body;
+    const { title, slug, category_id, sort_order, is_visible } = req.body || {};
 
-    if (!ALLOWED_SLUGS.has(slug)) {
-      return res.status(400).json({ error: `Neznámý identifikátor stránky: ${slug}` });
+    if (typeof title !== 'string' || !title.trim()) {
+      return res.status(400).json({ error: 'Název stránky je povinný' });
     }
-    if (typeof intro_text !== 'string') {
-      return res.status(400).json({ error: 'Chybí text úvodu' });
+    if (title.trim().length > MAX_TITLE_LENGTH) {
+      return res.status(400).json({ error: `Název stránky je příliš dlouhý (max ${MAX_TITLE_LENGTH} znaků)` });
     }
-    if (intro_text.length > MAX_INTRO_LENGTH) {
-      return res.status(400).json({ error: `Text úvodu je příliš dlouhý (max ${MAX_INTRO_LENGTH} znaků)` });
+    if (typeof slug !== 'string' || !isValidSlug(slug)) {
+      return res.status(400).json({ error: 'Neplatná URL (použijte malá písmena, číslice a spojovníky)' });
+    }
+
+    let catId = null;
+    if (category_id !== undefined && category_id !== null && category_id !== '') {
+      catId = Number(category_id) || null;
+      const cat = catId ? await db.prepare('SELECT id FROM categories WHERE id = ?').get(catId) : null;
+      if (!cat) return res.status(400).json({ error: 'Neznámá kategorie' });
     }
 
     const result = await db.prepare(`
-      UPDATE pages SET intro_text = ?, updated_at = CURRENT_TIMESTAMP WHERE slug = ?
-    `).run(intro_text, slug);
+      INSERT INTO pages (slug, title, intro_text, category_id, is_visible, sort_order)
+      VALUES (?, ?, '', ?, ?, ?)
+    `).run(slug, title.trim(), catId, normalizeVisibility(is_visible), Number(sort_order) || 0);
 
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Stránka nenalezena' });
+    const item = await db.prepare(`${PAGE_SELECT} WHERE p.id = ?`).get(result.lastInsertRowid);
+    logger.info('page_created', { id: result.lastInsertRowid, slug, title });
+    res.status(201).json({ message: 'Stránka vytvořena', item });
+  } catch (err) {
+    if (String(err.message || '').includes('UNIQUE')) {
+      logger.fromError('pages_create_error_unique', err, { slug: req.body?.slug });
+      return res.status(400).json({ error: 'Stránka s touto URL již existuje' });
+    }
+    logger.fromError('pages_create_error', err);
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
+
+// PUT /api/pages/:slug — admin updates a page (intro text + menu metadata).
+// Backwards compatible: sending only { intro_text } behaves exactly as before.
+router.put('/:slug', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const body = req.body || {};
+
+    const current = await db.prepare('SELECT * FROM pages WHERE slug = ?').get(slug);
+    if (!current) {
+      return res.status(400).json({ error: `Neznámý identifikátor stránky: ${slug}` });
     }
 
-    logger.info('page_intro_updated', { slug });
-    res.json({ message: 'Úvodní text uložen', slug, intro_text });
+    let introText = current.intro_text;
+    if (body.intro_text !== undefined) {
+      if (typeof body.intro_text !== 'string') {
+        return res.status(400).json({ error: 'Chybí text úvodu' });
+      }
+      if (body.intro_text.length > MAX_INTRO_LENGTH) {
+        return res.status(400).json({ error: `Text úvodu je příliš dlouhý (max ${MAX_INTRO_LENGTH} znaků)` });
+      }
+      introText = body.intro_text;
+    }
+
+    let title = current.title;
+    if (body.title !== undefined) {
+      if (typeof body.title !== 'string' || !body.title.trim()) {
+        return res.status(400).json({ error: 'Název stránky je povinný' });
+      }
+      if (body.title.trim().length > MAX_TITLE_LENGTH) {
+        return res.status(400).json({ error: `Název stránky je příliš dlouhý (max ${MAX_TITLE_LENGTH} znaků)` });
+      }
+      title = body.title.trim();
+    }
+
+    let catId = current.category_id;
+    if (body.category_id !== undefined) {
+      catId = body.category_id === null || body.category_id === '' ? null : (Number(body.category_id) || null);
+      if (catId) {
+        const cat = await db.prepare('SELECT id FROM categories WHERE id = ?').get(catId);
+        if (!cat) return res.status(400).json({ error: 'Neznámá kategorie' });
+      }
+    }
+
+    const is_visible = body.is_visible !== undefined ? normalizeVisibility(body.is_visible) : current.is_visible;
+    const sort_order = body.sort_order !== undefined ? Number(body.sort_order) || 0 : current.sort_order;
+
+    await db.prepare(`
+      UPDATE pages SET intro_text = ?, title = ?, category_id = ?, is_visible = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE slug = ?
+    `).run(introText, title, catId, is_visible, sort_order, slug);
+
+    const item = await db.prepare(`${PAGE_SELECT} WHERE p.slug = ?`).get(slug);
+    logger.info('page_updated', { slug });
+    res.json({ message: 'Úvodní text uložen', slug, ...(item ? { item } : {}) });
   } catch (err) {
     logger.fromError('pages_update_error', err);
+    res.status(500).json({ error: 'Chyba serveru' });
+  }
+});
+
+// DELETE /api/pages/:slug — admin-only cleanup (not exposed in the UI;
+// hiding is the intended way to remove a page from the menu).
+router.delete('/:slug', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
+  try {
+    const result = await db.prepare('DELETE FROM pages WHERE slug = ?').run(req.params.slug);
+    if (result.changes === 0) return res.status(404).json({ error: 'Stránka nenalezena' });
+    logger.info('page_deleted', { slug: req.params.slug });
+    res.json({ message: 'Stránka odstraněna' });
+  } catch (err) {
+    logger.fromError('pages_delete_error', err);
     res.status(500).json({ error: 'Chyba serveru' });
   }
 });
