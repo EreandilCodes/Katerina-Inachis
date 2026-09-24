@@ -651,6 +651,49 @@ ul, ol { list-style: none; }
   gap: 1rem;
 }
 
+/* ── Tag chips (content editors) ────────────────────────────── */
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 2.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.tag-chips__hint {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+  padding: 0.35rem 0;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  background: rgba(124, 100, 143, 0.12);
+  border: 1px solid rgba(124, 100, 143, 0.25);
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--violet);
+}
+
+.tag-chip__remove {
+  border: none;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+  cursor: pointer;
+}
+
+.tag-chip__remove:hover {
+  color: var(--error);
+}
+
 .input-with-btn {
   display: flex;
   gap: 0.5rem;

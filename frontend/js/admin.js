@@ -15,6 +15,7 @@ import { GalleryManager }     from '../admin/gallery.js';
 import { SettingsManager }    from '../admin/settings.js';
 import { PagesManager }       from '../admin/pages.js';
 import { MenuManager }        from '../admin/menu.js';
+import { TagsManager }        from '../admin/tags.js';
 
 const SECTION_TITLES = {
   overview:     'Přehled',
@@ -72,6 +73,8 @@ class AdminController {
       this.renderOverview();
       this.managers.menu ??= new MenuManager(this.auth, this);
       this.managers.menu.init();
+      this.managers.tags ??= new TagsManager(this.auth, this);
+      this.managers.tags.init();
       return;
     }
 
@@ -184,6 +187,24 @@ class AdminController {
             <table class="admin-table" id="menuItemsTable">
               <thead>
                 <tr><th>Název</th><th>Kategorie</th><th>Viditelnost</th><th class="td-actions">Akce</th></tr>
+              </thead>
+              <tbody><tr><td colspan="4" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr></tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:2.5rem">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;gap:1rem;flex-wrap:wrap">
+              <strong style="font-family:var(--font-body);font-size:0.85rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-mid)">Štítky (tagy)</strong>
+              <button class="btn-admin btn-admin--primary btn-admin--sm" onclick="window.admin.managers.tags?.openTagModal()">+ Nový štítek</button>
+            </div>
+            <p style="font-family:var(--font-body);font-size:0.85rem;color:var(--ink-mid);line-height:1.7;margin-bottom:1rem">
+              Globální štítky napříč všemi sekcemi (texty, umění, šperky, blog, programování, příspěvky přátel).
+              Ke každému štítku vzniká veřejná stránka na adrese <code>/tag/&lt;slug&gt;</code>. Smazání štítku
+              pouze odpojí obsah — žádný záznam se nikdy nesmaže.
+            </p>
+            <table class="admin-table" id="menuTagsTable">
+              <thead>
+                <tr><th>Název</th><th>URL</th><th>Položek</th><th class="td-actions">Akce</th></tr>
               </thead>
               <tbody><tr><td colspan="4" style="text-align:center;color:var(--ink-dim);padding:2rem">Načítám…</td></tr></tbody>
             </table>

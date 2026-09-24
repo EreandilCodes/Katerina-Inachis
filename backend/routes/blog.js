@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../database.js';
 import { AuthMiddleware } from '../middleware/auth.js';
 import { logger } from '../logger.js';
+import { getTagsForContent, deleteContentTags } from '../tags.js';
 
 const router = express.Router();
 
@@ -73,6 +74,7 @@ router.get('/:slug', async (req, res) => {
     }
     const item = await db.prepare(`SELECT ${selectCols} FROM blog_posts WHERE slug = ? AND is_published = 1`).get(req.params.slug);
     if (!item) return res.status(404).json({ error: 'Příspěvek nenalezen' });
+    item.tags = await getTagsForContent('blog_post', item.id);
     res.json(item);
   } catch (err) {
     logger.fromError('blog_get_error', err);
@@ -134,6 +136,7 @@ router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (
 // DELETE /api/blog/:id — admin
 router.delete('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
+    await deleteContentTags('blog_post', req.params.id);
     await db.prepare('DELETE FROM blog_posts WHERE id = ?').run(req.params.id);
     logger.info('blog_post_deleted', { id: req.params.id });
     res.json({ message: 'Příspěvek smazán' });

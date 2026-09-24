@@ -133,6 +133,8 @@ const app = {
         return this.renderAbout();
       case 'kontakt':
         return this.renderContact();
+      case 'tag':
+        return s1 ? this.renderTagPage(s1) : this.render404();
       default:
         return this.render404();
     }
@@ -542,6 +544,17 @@ function detailExcerptHtml(excerpt) {
   return excerpt ? `<p class="detail-excerpt">${esc(excerpt)}</p>` : '';
 }
 
+// Tags render between the perex and the cover image (Title → Perex → Tags →
+// Image → Content) so they are attached to the post but never split the
+// headline from its image. Artworks and jewelry have no perex, so there the
+// order is Title → Tags → Image → Content. Each tag links to its public
+// cross-category page /tag/<slug>.
+function detailTagsHtml(tags) {
+  const list = Array.isArray(tags) ? tags.filter(Boolean) : [];
+  if (!list.length) return '';
+  return `<div class="detail-tags">${list.map(tg => `<a class="detail-tag" href="/tag/${esc(tg.slug)}">#${esc(tg.name)}</a>`).join('')}</div>`;
+}
+
 async function renderTextDetail(slug) {
   app.showLoading();
   const i = window.t || (k => k);
@@ -558,6 +571,7 @@ async function renderTextDetail(slug) {
             <div class="detail-meta">${fmtDate(t.published_at || t.created_at)}</div>
           </div>
           ${detailExcerptHtml(t.excerpt)}
+          ${detailTagsHtml(t.tags)}
           ${t.cover_image ? `<div class="detail-cover"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}"></div>` : ''}
           <div class="text-content">${t.content || '<p>' + i('content.unavailable') + '</p>'}</div>
         </div>
@@ -613,6 +627,7 @@ async function renderArtworkDetail(slug) {
             <hr class="ornament-line">
             ${a.medium || a.year ? `<div class="detail-meta">${[a.medium, a.year].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
           </div>
+          ${detailTagsHtml(a.tags)}
           ${a.cover_image ? `<div class="detail-cover"><img src="${esc(a.cover_image)}" alt="${esc(a.title)}"></div>` : ''}
           ${a.description ? `<div class="text-content"><p>${esc(a.description)}</p></div>` : ''}
           ${images.length > 1 ? `
@@ -677,6 +692,7 @@ async function renderJewelryDetail(slug) {
             <h1 class="detail-title">${esc(j.title)}</h1>
             <hr class="ornament-line">
           </div>
+          ${detailTagsHtml(j.tags)}
           ${j.cover_image ? `<div class="detail-cover" style="max-width:600px;aspect-ratio:1"><img src="${esc(j.cover_image)}" alt="${esc(j.title)}"></div>` : ''}
           <div class="text-content" style="margin-top:2rem">
             ${j.description ? `<p>${esc(j.description)}</p>` : ''}
@@ -747,6 +763,7 @@ async function renderBlogPost(slug) {
             <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
           </div>
           ${detailExcerptHtml(b.excerpt)}
+          ${detailTagsHtml(b.tags)}
           ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
           <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
         </div>
@@ -799,6 +816,7 @@ async function renderProgrammingPost(slug) {
             <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
           </div>
           ${detailExcerptHtml(b.excerpt)}
+          ${detailTagsHtml(b.tags)}
           ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
           <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
         </div>
@@ -897,6 +915,7 @@ async function renderFriendPost(friendSlug, postSlug) {
             <div class="detail-meta">${fmtDate(post.published_at || post.created_at)}</div>
           </div>
           ${detailExcerptHtml(post.excerpt)}
+          ${detailTagsHtml(post.tags)}
           ${post.cover_image ? `<div class="detail-cover"><img src="${esc(post.cover_image)}" alt="${esc(post.title)}"></div>` : ''}
           ${post.content ? `<div class="text-content">${post.content}</div>` : ''}
           ${images.length > 1 ? `
@@ -914,6 +933,59 @@ async function renderFriendPost(friendSlug, postSlug) {
     if (window.initCarousels) window.initCarousels();
   } catch (err) {
     app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3></div></div></div>`);
+  }
+}
+
+// ============================================================
+// Tags (global, cross-category)
+// ============================================================
+// A tag page lists published items from every content section (texts, art,
+// jewelry, blog, programming, friends' posts). The backend already filters to
+// published-only content and provides each item's public URL + section label.
+const TAG_SECTION_KEYS = {
+  texty:        'nav.texts',
+  umeni:        'home.section.art',
+  kresba:       'nav.drawing',
+  blog:         'nav.blog',
+  programovani: 'nav.programming',
+  pratele:      'nav.friends',
+};
+
+function tagItemLabel(item) {
+  if (item.content_type === 'friend_post' && item.author) return item.author;
+  const key = TAG_SECTION_KEYS[item.section];
+  const label = key && window.t ? window.t(key) : '';
+  return label && label !== key ? label : (item.section || '');
+}
+
+async function renderTagPage(slug) {
+  app.showLoading();
+  const i = window.t || (k => k);
+  try {
+    const data = await safeFetch(`/api/tags/${encodeURIComponent(slug)}` + langParam());
+    app.setContent(`
+      <section class="section">
+        <div class="section-inner">
+          <div class="section-header">
+            <h1 class="section-title">#${esc(data.tag.name)}</h1>
+            <hr class="ornament-line">
+          </div>
+          ${data.items.length
+            ? `<div class="content-grid content-grid--3">${data.items.map(item => `
+              <div class="card" onclick="app.navigate('${esc(item.url)}')">
+                ${item.cover_image ? `<div class="card-img"><img src="${esc(item.cover_image)}" alt="${esc(item.title)}" loading="lazy"></div>` : ''}
+                <div class="card-body">
+                  <span class="card-category">${esc(tagItemLabel(item))}</span>
+                  <h3 class="card-title">${esc(item.title)}</h3>
+                  ${item.excerpt ? `<p class="card-excerpt">${esc(item.excerpt)}</p>` : ''}
+                  <div class="card-meta">${fmtDate(item.published_at || item.created_at)}</div>
+                </div>
+              </div>`).join('')}</div>`
+            : `<div class="empty-state"><h3>${i('empty.tags')}</h3><p>${i('empty.tagsDesc')}</p></div>`}
+        </div>
+      </section>`);
+  } catch (err) {
+    app.setContent(`<div class="section"><div class="section-inner"><div class="empty-state"><h3>${i('error.notFound')}</h3><p>${esc(err.message)}</p></div></div></div>`);
   }
 }
 
@@ -1247,14 +1319,14 @@ Object.assign(window, { app, openLightbox, closeLightbox, syncPublicNav, updateS
   renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
   renderBlogList, renderBlogPost, renderProgrammingList, renderProgrammingPost,
   renderFriendsIndex, renderFriendPage, renderFriendPost,
-  renderAbout, renderContact });
+  renderAbout, renderContact, renderTagPage });
 
 // Attach router methods to app
 Object.assign(app, { renderHomepage, renderTextsList, renderTextsFiltered, renderTextRoute, renderTextDetail,
   renderArtworksList, renderArtworkDetail, renderJewelryList, renderJewelryDetail,
   renderBlogList, renderBlogPost, renderProgrammingList, renderProgrammingPost,
   renderFriendsIndex, renderFriendPage, renderFriendPost,
-  renderAbout, renderContact, render404 });
+  renderAbout, renderContact, render404, renderTagPage });
 
 // ── Init ──────────────────────────────────────────────────────
 if (window.initLang) window.initLang();

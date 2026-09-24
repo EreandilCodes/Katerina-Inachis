@@ -57,6 +57,8 @@ const translations = {
     'empty.posts': 'Žádné příspěvky',
     'empty.category': 'Žádné položky',
     'empty.categoryDesc': 'Zatím nebyly přidány žádné položky v této kategorii.',
+    'empty.tags': 'Žádné položky se štítkem',
+    'empty.tagsDesc': 'K tomuto štítku zatím nebyla přiřazena žádná publikovaná položka.',
 
     // Content
     'content.unavailable': 'Text není dostupný.',
@@ -160,6 +162,8 @@ const translations = {
     'empty.posts': 'No posts',
     'empty.category': 'No items',
     'empty.categoryDesc': 'No items have been added in this category yet.',
+    'empty.tags': 'No items with this tag',
+    'empty.tagsDesc': 'No published item has been assigned this tag yet.',
 
     // Content
     'content.unavailable': 'Content is not available.',

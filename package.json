@@ -15,7 +15,8 @@
     "test:order": "node tests/post-order.mjs",
     "test:textsubs": "node tests/text-categories.mjs",
     "test:homepage": "node tests/homepage.mjs",
-    "test:gallery": "node tests/gallery.mjs"
+    "test:gallery": "node tests/gallery.mjs",
+    "test:tags": "node tests/tags.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

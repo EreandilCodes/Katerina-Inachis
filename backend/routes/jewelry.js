@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../database.js';
 import { AuthMiddleware } from '../middleware/auth.js';
 import { logger } from '../logger.js';
+import { getTagsForContent, deleteContentTags } from '../tags.js';
 
 const router = express.Router();
 
@@ -77,6 +78,7 @@ router.get('/:slug', async (req, res) => {
     }
     const item = await db.prepare(`SELECT ${selectCols} FROM jewelry WHERE slug = ? AND is_published = 1`).get(req.params.slug);
     if (!item) return res.status(404).json({ error: 'Šperk nenalezen' });
+    item.tags = await getTagsForContent('jewelry', item.id);
     res.json(item);
   } catch (err) {
     logger.fromError('jewelry_get_error', err);
@@ -138,6 +140,7 @@ router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (
 // DELETE /api/jewelry/:id — admin
 router.delete('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
+    await deleteContentTags('jewelry', req.params.id);
     await db.prepare('DELETE FROM jewelry WHERE id = ?').run(req.params.id);
     logger.info('jewelry_deleted', { id: req.params.id });
     res.json({ message: 'Šperk smazán' });

@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../database.js';
 import { AuthMiddleware } from '../middleware/auth.js';
 import { logger } from '../logger.js';
+import { getTagsForContent, deleteContentTags } from '../tags.js';
 
 const router = express.Router();
 
@@ -110,6 +111,7 @@ router.get('/:slug', async (req, res) => {
     }
     const item = await db.prepare(`SELECT ${selectCols} FROM texts WHERE slug = ? AND is_published = 1`).get(req.params.slug);
     if (!item) return res.status(404).json({ error: 'Text nenalezen' });
+    item.tags = await getTagsForContent('text', item.id);
     res.json(item);
   } catch (err) {
     logger.fromError('texts_get_error', err);
@@ -171,6 +173,7 @@ router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (
 // DELETE /api/texts/:id — admin
 router.delete('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
+    await deleteContentTags('text', req.params.id);
     await db.prepare('DELETE FROM texts WHERE id = ?').run(req.params.id);
     logger.info('text_deleted', { id: req.params.id });
     res.json({ message: 'Text smazán' });

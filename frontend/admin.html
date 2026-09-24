@@ -437,6 +437,11 @@
             <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('txtCoverImage')">Z galerie</button>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Štítky (tagy)</label>
+          <div class="tag-chips" id="textsTagsChips"><span class="tag-chips__hint">Zadejte název štítku a stiskněte Enter.</span></div>
+          <input class="form-input" type="text" id="textsTagsInput" placeholder="Přidat štítek…" autocomplete="off">
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Pořadí</label>
@@ -533,6 +538,11 @@
             <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('artImagesJson', true)">Z galerie</button>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Štítky (tagy)</label>
+          <div class="tag-chips" id="artworksTagsChips"><span class="tag-chips__hint">Zadejte název štítku a stiskněte Enter.</span></div>
+          <input class="form-input" type="text" id="artworksTagsInput" placeholder="Přidat štítek…" autocomplete="off">
+        </div>
         <div class="form-group" style="display:flex;gap:1.5rem">
           <div class="form-check">
             <input type="checkbox" name="is_featured" id="artFeatured">
@@ -613,6 +623,11 @@
             <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('jewImagesJson', true)">Z galerie</button>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">Štítky (tagy)</label>
+          <div class="tag-chips" id="jewelryTagsChips"><span class="tag-chips__hint">Zadejte název štítku a stiskněte Enter.</span></div>
+          <input class="form-input" type="text" id="jewelryTagsInput" placeholder="Přidat štítek…" autocomplete="off">
+        </div>
         <div class="form-group" style="display:flex;gap:1.5rem;flex-wrap:wrap">
           <div class="form-check">
             <input type="checkbox" name="is_available" id="jewAvailable" checked>
@@ -675,6 +690,11 @@
             <input class="form-input" type="text" name="cover_image" id="blogCoverImage" placeholder="https://…">
             <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('blogCoverImage')">Z galerie</button>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Štítky (tagy)</label>
+          <div class="tag-chips" id="blogTagsChips"><span class="tag-chips__hint">Zadejte název štítku a stiskněte Enter.</span></div>
+          <input class="form-input" type="text" id="blogTagsInput" placeholder="Přidat štítek…" autocomplete="off">
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -740,6 +760,11 @@
             <input class="form-input" type="text" name="cover_image" id="programmingCoverImage" placeholder="https://…">
             <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('programmingCoverImage')">Z galerie</button>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Štítky (tagy)</label>
+          <div class="tag-chips" id="programmingTagsChips"><span class="tag-chips__hint">Zadejte název štítku a stiskněte Enter.</span></div>
+          <input class="form-input" type="text" id="programmingTagsInput" placeholder="Přidat štítek…" autocomplete="off">
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -899,6 +924,11 @@
             <textarea class="form-textarea" name="images_json" id="fpImagesJson" rows="2" placeholder='["https://…"]'></textarea>
             <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('fpImagesJson', true)">Z galerie</button>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Štítky (tagy)</label>
+          <div class="tag-chips" id="friendPostsTagsChips"><span class="tag-chips__hint">Zadejte název štítku a stiskněte Enter.</span></div>
+          <input class="form-input" type="text" id="friendPostsTagsInput" placeholder="Přidat štítek…" autocomplete="off">
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -1100,6 +1130,35 @@
         </p>
         <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0;border-top:1px solid var(--border)">
           <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('categoryModalOverlay').classList.add('hidden')">Zrušit</button>
+          <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Tag Modal -->
+<div class="modal-overlay hidden" id="tagModalOverlay">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h3 id="tagModalTitle">Nový štítek</h3>
+      <button class="modal-close" onclick="document.getElementById('tagModalOverlay').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="tagForm">
+        <div class="form-group">
+          <label class="form-label">Název <span class="required">*</span></label>
+          <input class="form-input" type="text" name="name" required maxlength="100" placeholder="např. Příroda" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL (veřejná stránka)</label>
+          <div style="font-family:var(--font-mono,#ui-monospace,monospace);font-size:0.82rem;color:var(--ink);background:rgba(0,0,0,0.04);padding:0.45rem 0.6rem;border-radius:6px" id="tagSlugPreview">/tag/…</div>
+          <p style="font-family:var(--font-body);font-size:0.75rem;color:var(--ink-dim);margin-top:0.3rem">
+            URL se vytvoří automaticky z názvu (malá písmena a spojovníky) a nelze ji po vytvoření měnit — odkazy na štítek zůstávají stabilní.
+          </p>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.5rem;padding:1rem 1.5rem 0;border-top:1px solid var(--border)">
+          <button type="button" class="btn-admin btn-admin--outline" onclick="document.getElementById('tagModalOverlay').classList.add('hidden')">Zrušit</button>
           <button type="submit" class="btn-admin btn-admin--primary">Uložit</button>
         </div>
       </form>

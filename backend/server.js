@@ -21,6 +21,7 @@ import galleryRoutes, { GALLERY_UPLOAD_DIR, reconcileLegacyGalleryFiles } from '
 import settingsRoutes       from './routes/settings.js';
 import pagesRoutes          from './routes/pages.js';
 import categoriesRoutes     from './routes/categories.js';
+import tagsRoutes           from './routes/tags.js';
 import inquiriesRoutes      from './routes/inquiries.js';
 
 dotenv.config();
@@ -95,6 +96,7 @@ initWithTimeout
     app.use('/api/settings',       settingsRoutes);
     app.use('/api/pages',          pagesRoutes);
     app.use('/api/categories',     categoriesRoutes);
+    app.use('/api/tags',           tagsRoutes);
     app.use('/api/inquiries',      inquiriesRoutes);
 
     // Admin panel

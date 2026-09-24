@@ -443,6 +443,39 @@ export async function initDatabase() {
   try { await db.exec('ALTER TABLE pages ADD COLUMN sort_order INTEGER DEFAULT 0'); } catch (_e) {}
   console.log('✅ pages menu columns ready');
 
+  // ── Global content tags (additive, backwards-compatible) ────────────────
+  // Many-to-many: `tags` (global, cross-category) connects to any image-bearing
+  // content item (texts/artworks/jewelry/blog_posts/programming_posts/
+  // friend_posts) through `content_tags`. Tags are distinct from menu
+  // categories — never children of them — and never store comma-separated
+  // strings on the content rows. `name_key` is the case-insensitive uniqueness
+  // key ("Příroda" and "příroda" are the same tag); `slug` is the public URL
+  // segment (/tag/<slug>) and is immutable after creation so links stay stable.
+  // Deleting a tag removes only its `content_tags` associations — content is
+  // never cascaded. Existing content starts untagged.
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS tags (
+      id         ${pk},
+      name       TEXT NOT NULL,
+      name_key   TEXT NOT NULL UNIQUE,
+      slug       TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS content_tags (
+      id           ${pk},
+      tag_id       INTEGER NOT NULL,
+      content_type TEXT NOT NULL,
+      content_id   INTEGER NOT NULL,
+      created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (tag_id, content_type, content_id)
+    )
+  `);
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_content_tags_tag_id ON content_tags(tag_id)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_content_tags_content ON content_tags(content_type, content_id)');
+  console.log('✅ tags + content_tags tables ready');
+
   // ── Seed the Texty subcategories ──────────────────────────────────────
   // Knihy / Povídky / Básně have always existed as public nav links, SPA
   // routes and `texts.category` values, but were never records in this table.

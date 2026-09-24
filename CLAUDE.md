@@ -322,6 +322,41 @@ delete actions behind the Smazat button in Admin → Přehled (Kategorie a strá
   links whose page no longer exists, so the public nav never points at a
   deleted page.
 
+## Global content tags
+
+Tags are **global and cross-category** (unlike menu categories): one tag can be
+attached to any mix of texts, artworks, jewelry, blog, programming posts and
+friend posts. They are managed from Admin → Přehled → "Štítky (tagy)" and
+assigned from each editor's tag-chips input (`*TagsChips`/`*TagsInput` in
+`frontend/admin.html`, `TagPicker` in `frontend/admin/tags.js`).
+
+- Enforced on the tagged item's public detail: tags render between the perex and
+  the cover image (texts/blog/programming/friend posts:
+  `Title → Perex → Tags → Image → Content`; artworks/jewelry have no perex:
+  `Title → Tags → Image → Content`). Never move the `.detail-tags` block.
+- Public tag pages live at `/tag/<slug>` (`frontend/js/public.js`
+  `renderTagPage()`, `TAG_SECTION_KEYS` maps a content type to its public
+  section URL). Each tagged item is listed once per section, in published-only
+  order. A tag with no visible items renders the `.empty-state`.
+- `tags.slug` is **immutable** after creation (renaming changes only `name`).
+  `slugifyTag()` (backend `routes/tags.js`) produces lowercased ASCII slugs;
+  case-insensitive duplicates are rejected with 400 (Czech message):
+  "Štítek s tímto názvem (URL) již existuje".
+- All tag admin routes are admin-only
+  (`POST/PUT/DELETE /api/tags`, `GET /api/tags/admin/all`,
+  `POST /api/tags/admin/assign`, `GET /api/tags/admin/by-content`); the public
+  list is `GET /api/tags` and the page is `GET /api/tags/:slug`.
+- Assignment writes to `content_tags` (join table). Content **POST/PUT**
+  responses are `{ message, item }`; editors capture `result?.item?.id` and call
+  `tagPicker.assign(type, savedId)` in `saveItem` — a tag failure must never
+  break the content save (wrapped in try/catch that only toasts the error).
+- Deleting a tag **never cascades**: it only removes the `content_tags` rows;
+  content stays fully intact. Deleting content cleans up its join rows.
+  `artworks`/`jewelry` have no `published_at` column, so their tag-detail
+  queries select `NULL as published_at` explicitly.
+- i18n keys: `empty.tags` / `empty.tagsDesc` (cs + en); tag-page section labels
+  reuse the existing nav keys.
+
 ## Known Rules
 
 1. ALL routes use `logger` — no console.log in backend

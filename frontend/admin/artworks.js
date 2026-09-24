@@ -1,10 +1,12 @@
 // ── ArtworksManager ───────────────────────────────────────────
+import { TagPicker } from './tags.js';
 
 export class ArtworksManager {
   constructor(auth, admin) {
     this.auth  = auth;
     this.admin = admin;
     this.items = [];
+    this.tagPicker = new TagPicker(admin, 'artworksTagsChips', 'artworksTagsInput');
   }
 
   async init() {
@@ -87,6 +89,9 @@ export class ArtworksManager {
       e.preventDefault();
       await this.saveItem(id);
     };
+
+    this.tagPicker.reset();
+    if (item) this.tagPicker.loadFor('artwork', item.id);
   }
 
   async saveItem(id) {
@@ -125,9 +130,18 @@ export class ArtworksManager {
         throw new Error(err.error || 'Request failed');
       }
       if (!ct?.includes('application/json')) throw new Error('Non-JSON response');
+      const result = await response.json();
 
       this.closeModal();
       this.admin.showNotification(id ? 'Dílo aktualizováno' : 'Dílo vytvořeno');
+      const savedId = id || result?.item?.id;
+      if (savedId) {
+        try {
+          await this.tagPicker.assign('artwork', savedId);
+        } catch (err) {
+          this.admin.showNotification(`Chyba štítků: ${err.message}`, 'error');
+        }
+      }
       await this.loadItems();
     } catch (err) {
       this.admin.showNotification(`Chyba: ${err.message}`, 'error');
