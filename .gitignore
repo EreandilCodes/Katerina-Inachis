@@ -5,3 +5,4 @@ backend/inachis.db-shm
 backend/inachis.db-wal
 frontend/uploads/
 *.log
+data-cache/

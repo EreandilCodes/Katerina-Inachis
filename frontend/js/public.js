@@ -389,7 +389,43 @@ async function renderHomepage() {
 // ============================================================
 // Card renderers
 // ============================================================
-function renderTextCard(t) {
+
+// Thumbnail URL for a gallery cover image. Listing card grids request a small
+// WebP variant via /img/gallery instead of downloading the full-size original
+// served at /uploads/gallery. Anything that is not a /uploads/gallery URL is
+// returned unchanged, so other image sources (external URLs, non-gallery
+// files) keep their current behaviour.
+function thumbUrl(src, w = 800) {
+  if (!src) return src;
+  const m = /^\/uploads\/gallery\/([A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|webp|gif|avif))$/.exec(src);
+  if (!m) return src;
+  return `/img/gallery/${encodeURIComponent(m[1])}?w=${w}`;
+}
+
+// Shared listing-card image markup. The card image box reserves its 3/2 aspect
+// ratio in CSS, so the width/height attrs only add an intrinsic-size hint (no
+// layout shift). The first cards of a real list load eagerly (they are the
+// viewport/LCP candidates) and the very first one gets fetchpriority="high";
+// everything below the fold stays lazy.
+function cardImgHtml(src, alt, opts = {}) {
+  const w = opts.w || 800;
+  const h = Math.round((w * 2) / 3);
+  const loading = opts.eager ? 'eager' : 'lazy';
+  const fp = opts.priority ? ' fetchpriority="high"' : '';
+  return `<div class="card-img"><img src="${esc(thumbUrl(src, w))}" alt="${esc(alt)}" width="${w}" height="${h}" loading="${loading}"${fp}></div>`;
+}
+
+// Loading plan for a listing grid: the first 4 cards sit in the initial
+// viewport and load eagerly, everything below stays lazy. Only genuine lists
+// pass an index — homepage tiles call the card renderers without one and keep
+// lazy (the hero is the homepage LCP).
+function cardLoading(index) {
+  return typeof index === 'number' && index < 4
+    ? { eager: true, priority: index === 0 }
+    : {};
+}
+
+function renderTextCard(t, index) {
   return `
     <div class="card" onclick="app.navigate('/texty/${esc(t.slug)}')">
       <div class="card-body">
@@ -397,7 +433,7 @@ function renderTextCard(t) {
         <h3 class="card-title">${esc(t.title)}</h3>
         ${t.excerpt ? `<p class="card-excerpt">${esc(t.excerpt)}</p>` : ''}
       </div>
-      ${t.cover_image ? `<div class="card-img"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}" loading="lazy"></div>` : ''}
+      ${t.cover_image ? cardImgHtml(t.cover_image, t.title, cardLoading(index)) : ''}
       <div class="card-meta">${fmtDate(t.published_at || t.created_at)}</div>
     </div>`;
 }
@@ -444,7 +480,7 @@ function renderFriendCard(f) {
     </div>`;
 }
 
-function renderBlogCard(b) {
+function renderBlogCard(b, index) {
   return `
     <div class="card" onclick="app.navigate('/blog/${esc(b.slug)}')">
       <div class="card-body">
@@ -452,12 +488,12 @@ function renderBlogCard(b) {
         <h3 class="card-title">${esc(b.title)}</h3>
         ${b.excerpt ? `<p class="card-excerpt">${esc(b.excerpt)}</p>` : ''}
       </div>
-      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
+      ${b.cover_image ? cardImgHtml(b.cover_image, b.title, cardLoading(index)) : ''}
       <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
     </div>`;
 }
 
-function renderProgrammingCard(b) {
+function renderProgrammingCard(b, index) {
   const i = window.t || (k => k);
   return `
     <div class="card" onclick="app.navigate('/programovani/${esc(b.slug)}')">
@@ -466,7 +502,7 @@ function renderProgrammingCard(b) {
         <h3 class="card-title">${esc(b.title)}</h3>
         ${b.excerpt ? `<p class="card-excerpt">${esc(b.excerpt)}</p>` : ''}
       </div>
-      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
+      ${b.cover_image ? cardImgHtml(b.cover_image, b.title, cardLoading(index)) : ''}
       <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
     </div>`;
 }
@@ -489,7 +525,7 @@ async function renderTextsList() {
             ${intro}
           </div>
           ${items.length
-            ? `<div class="content-grid content-grid--3">${items.map(t => renderTextCard(t)).join('')}</div>`
+            ? `<div class="content-grid content-grid--3">${items.map((t, i) => renderTextCard(t, i)).join('')}</div>`
             : `<div class="empty-state"><h3>${i('empty.texts')}</h3><p>${i('empty.textsDesc')}</p></div>`}
         </div>
       </section>`);
@@ -523,7 +559,7 @@ async function renderTextsFiltered(category, label) {
             <hr class="ornament-line">
           </div>
           <div class="content-grid content-grid--3">
-            ${items.map(t => renderTextCard(t)).join('')}
+            ${items.map((t, i) => renderTextCard(t, i)).join('')}
           </div>
         </div>
       </section>`);
@@ -753,7 +789,7 @@ async function renderBlogList() {
             ${intro}
           </div>
           ${items.length
-            ? `<div class="content-grid content-grid--3">${items.map(b => renderBlogCard(b)).join('')}</div>`
+            ? `<div class="content-grid content-grid--3">${items.map((b, i) => renderBlogCard(b, i)).join('')}</div>`
             : `<div class="empty-state"><h3>${i('empty.blog')}</h3></div>`}
         </div>
       </section>`);
@@ -806,7 +842,7 @@ async function renderProgrammingList() {
             ${intro}
           </div>
           ${items.length
-            ? `<div class="content-grid content-grid--3">${items.map(b => renderProgrammingCard(b)).join('')}</div>`
+            ? `<div class="content-grid content-grid--3">${items.map((b, i) => renderProgrammingCard(b, i)).join('')}</div>`
             : `<div class="empty-state"><h3>${i('empty.programming')}</h3></div>`}
         </div>
       </section>`);
@@ -893,14 +929,14 @@ async function renderFriendPage(friendSlug) {
           ${posts.length ? `
           <h2 class="section-title" style="font-size:clamp(1.5rem,3vw,2.2rem);margin-bottom:2rem">${i('friends.posts')}</h2>
           <div class="content-grid content-grid--3">
-            ${posts.map(p => `
+            ${posts.map((p, i) => `
               <div class="card" onclick="app.navigate('/pratele/${esc(friendSlug)}/${esc(p.slug)}')">
                 <div class="card-body">
                   <span class="card-category">${esc(p.type)}</span>
                   <h3 class="card-title">${esc(p.title)}</h3>
                   ${p.excerpt ? `<p class="card-excerpt">${esc(p.excerpt)}</p>` : ''}
                 </div>
-                ${p.cover_image ? `<div class="card-img"><img src="${esc(p.cover_image)}" alt="${esc(p.title)}" loading="lazy"></div>` : ''}
+                ${p.cover_image ? cardImgHtml(p.cover_image, p.title, cardLoading(i)) : ''}
                 <div class="card-meta">${fmtDate(p.published_at || p.created_at)}</div>
               </div>`).join('')}
           </div>` : `<div class="empty-state"><h3>${i('empty.posts')}</h3></div>`}
@@ -986,14 +1022,14 @@ async function renderTagPage(slug) {
             <hr class="ornament-line">
           </div>
           ${data.items.length
-            ? `<div class="content-grid content-grid--3">${data.items.map(item => `
+            ? `<div class="content-grid content-grid--3">${data.items.map((item, i) => `
               <div class="card" onclick="app.navigate('${esc(item.url)}')">
                 <div class="card-body">
                   <span class="card-category">${esc(tagItemLabel(item))}</span>
                   <h3 class="card-title">${esc(item.title)}</h3>
                   ${item.excerpt ? `<p class="card-excerpt">${esc(item.excerpt)}</p>` : ''}
                 </div>
-                ${item.cover_image ? `<div class="card-img"><img src="${esc(item.cover_image)}" alt="${esc(item.title)}" loading="lazy"></div>` : ''}
+                ${item.cover_image ? cardImgHtml(item.cover_image, item.title, cardLoading(i)) : ''}
                 <div class="card-meta">${fmtDate(item.published_at || item.created_at)}</div>
               </div>`).join('')}</div>`
             : `<div class="empty-state"><h3>${i('empty.tags')}</h3><p>${i('empty.tagsDesc')}</p></div>`}

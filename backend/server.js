@@ -18,6 +18,7 @@ import friendsRoutes        from './routes/friends.js';
 import friendPostsRoutes    from './routes/friend-posts.js';
 import friendPortalRouter   from './routes/friend-portal.js';
 import galleryRoutes, { GALLERY_UPLOAD_DIR, reconcileLegacyGalleryFiles } from './routes/gallery.js';
+import imagesRoutes         from './routes/images.js';
 import settingsRoutes       from './routes/settings.js';
 import pagesRoutes          from './routes/pages.js';
 import categoriesRoutes     from './routes/categories.js';
@@ -72,8 +73,11 @@ initWithTimeout
     // Gallery uploads are served first from the persistent volume dir so that
     // images survive deploy cycles (the generic frontend static mount below
     // would otherwise prefer/collide with files in the ephemeral container).
-    app.use('/uploads/gallery', express.static(GALLERY_UPLOAD_DIR));
+    // dotfiles are ignored so any stray cache/thumbnail data is never served.
+    app.use('/uploads/gallery', express.static(GALLERY_UPLOAD_DIR, { dotfiles: 'ignore' }));
     app.use(express.static(path.join(__dirname, '../frontend')));
+    // Thumbnail variants derived from the gallery uploads (see images.js).
+    app.use('/img/gallery', imagesRoutes);
 
     // ── API Routes ─────────────────────────────────────────────────────────
     // Texty is mounted BEFORE the default JSON parser: the texts router parses

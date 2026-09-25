@@ -14,6 +14,7 @@ npm run test:homepage    # Homepage newest-tile rows (tests/homepage.mjs)
 npm run test:gallery     # Gallery optimization + persistence (tests/gallery.mjs)
 npm run test:bilingual   # EN fields for tags/categories/pages (tests/bilingual.mjs)
 npm run test:cardorder   # Listing-card order body→img→meta (tests/card-order.mjs)
+npm run test:textthumb   # Listing-card thumbnail serving (tests/text-thumb.mjs)
 ```
 
 **Access Points:**
@@ -267,6 +268,33 @@ volume**, not in Git and not in the ephemeral container filesystem.
   block) is a non-destructive safety net: it copies any DB-referenced file found
   only in the legacy container dir into the persistent dir and logs records that
   are missing in BOTH locations.
+
+## Listing-card thumbnails (/img/gallery)
+
+Small listing-card covers must **never** load the full-size `/uploads/gallery`
+original (multi-MB PNGs). `backend/routes/images.js` serves derived WebP
+resizes at `GET /img/gallery/<file>?w=<width>` (mounted in `server.js`), and
+`frontend/js/public.js` `thumbUrl()` / `cardImgHtml()` rewrite card covers to
+that endpoint (default `w=800`, 3:2 intrinsic size hints, eager for the first 4
+cards of a list + `fetchpriority="high"` on the first, lazy below; homepage
+tiles pass no index and stay lazy).
+
+- The **original is never modified**; `file-<w>.webp` is cached in a directory
+  that lives **outside every public static root** (Railway volume sibling or
+  `/data/thumbs-cache`; local default `data-cache/thumbs` at the repo root), so
+  the cache is never browsable and cannot shadow a source file. A thumb is
+  regenerated when the source mtime is newer, so a replaced image never stays
+  stale forever.
+- Responses carry `Content-Type: image/webp`, `ETag` (derived from source stat
+  + width) and a **bounded** `Cache-Control: public, max-age=86400` — enough
+  for repeat visits, with ETag 304 revalidation for correctness. Do not switch
+  to `immutable`/long `max-age` caches.
+- Width clamps to `[64, 1600]` (default 800), `withoutEnlargement: true`,
+  filename must match the safe-file regex (else 400), missing source is 404.
+- Detail pages (`.detail-cover`) keep the **original** cover URL — only the
+  listing-card grid is thumbnailised. `artwork`/`jewelry` grid renderers
+  (`renderArtworkGalleryItem`/`renderJewelryItem`) are intentionally untouched.
+- Tests: `tests/text-thumb.mjs` (`npm run test:textthumb`).
 
 ## Texty subcategories (data-driven)
 
