@@ -16,13 +16,17 @@ const router = express.Router();
 // ── Public: all tags (lightweight; item_count = current number of links) ──
 router.get('/', async (_req, res) => {
   try {
-    const tags = await db.prepare(`
-      SELECT t.id, t.name, t.slug, t.created_at, COUNT(ct.id) AS item_count
+    const lang = _req.query.lang === 'en';
+    const rows = await db.prepare(`
+      SELECT t.id, t.name, t.name_en, t.slug, t.created_at, COUNT(ct.id) AS item_count
       FROM tags t
       LEFT JOIN content_tags ct ON ct.tag_id = t.id
       GROUP BY t.id
       ORDER BY lower(t.name), t.id
     `).all();
+    const tags = lang
+      ? rows.map((t) => ({ ...t, name: t.name_en || t.name }))
+      : rows;
     res.json(tags);
   } catch (err) {
     logger.fromError('tags_list_error', err);
@@ -34,7 +38,7 @@ router.get('/', async (_req, res) => {
 router.get('/admin/all', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (_req, res) => {
   try {
     const tags = await db.prepare(`
-      SELECT t.id, t.name, t.slug, t.created_at, COUNT(ct.id) AS item_count
+      SELECT t.id, t.name, t.name_en, t.slug, t.created_at, COUNT(ct.id) AS item_count
       FROM tags t
       LEFT JOIN content_tags ct ON ct.tag_id = t.id
       GROUP BY t.id
@@ -90,11 +94,12 @@ router.post('/admin/assign', AuthMiddleware.verifyToken, AuthMiddleware.adminOnl
 // ── Admin: create tag ────────────────────────────────────────────────────
 router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, name_en } = req.body;
     if (!name || !String(name).trim()) {
       return res.status(400).json({ error: 'Název štítku je povinný' });
     }
     const cleanName = String(name).trim();
+    const cleanNameEn = typeof name_en === 'string' ? String(name_en).trim() : '';
     const slug = slugifyTag(cleanName);
     if (!slug) return res.status(400).json({ error: 'Z názvu nelze vytvořit URL' });
     if (await db.prepare('SELECT id FROM tags WHERE slug = ?').get(slug)) {
@@ -105,9 +110,9 @@ router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (re
     }
 
     const result = await db.prepare(
-      'INSERT INTO tags (name, name_key, slug) VALUES (?, ?, ?)'
-    ).run(cleanName, cleanName.toLowerCase(), slug);
-    const item = await db.prepare('SELECT id, name, slug, created_at FROM tags WHERE id = ?').get(result.lastInsertRowid);
+      'INSERT INTO tags (name, name_en, name_key, slug) VALUES (?, ?, ?, ?)'
+    ).run(cleanName, cleanNameEn, cleanName.toLowerCase(), slug);
+    const item = await db.prepare('SELECT id, name, name_en, slug, created_at FROM tags WHERE id = ?').get(result.lastInsertRowid);
     logger.info('tag_created', { id: result.lastInsertRowid, name: cleanName });
     res.status(201).json({ message: 'Štítek vytvořen', item });
   } catch (err) {
@@ -119,11 +124,12 @@ router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (re
 // ── Admin: rename tag (slug / public URL stays immutable) ────────────────
 router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, name_en } = req.body;
     if (!name || !String(name).trim()) {
       return res.status(400).json({ error: 'Název štítku je povinný' });
     }
     const cleanName = String(name).trim();
+    const cleanNameEn = typeof name_en === 'string' ? String(name_en).trim() : null;
     const tag = await db.prepare('SELECT * FROM tags WHERE id = ?').get(req.params.id);
     if (!tag) return res.status(404).json({ error: 'Štítek nenalezen' });
 
@@ -134,9 +140,9 @@ router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (
       .get(cleanName.toLowerCase(), req.params.id);
     if (dupName) return res.status(400).json({ error: 'Štítek s tímto názvem již existuje' });
 
-    await db.prepare('UPDATE tags SET name = ?, name_key = ? WHERE id = ?')
-      .run(cleanName, cleanName.toLowerCase(), req.params.id);
-    const item = await db.prepare('SELECT id, name, slug, created_at FROM tags WHERE id = ?').get(req.params.id);
+    await db.prepare('UPDATE tags SET name = ?, name_key = ?, name_en = ? WHERE id = ?')
+      .run(cleanName, cleanName.toLowerCase(), cleanNameEn ?? tag.name_en, req.params.id);
+    const item = await db.prepare('SELECT id, name, name_en, slug, created_at FROM tags WHERE id = ?').get(req.params.id);
     logger.info('tag_updated', { id: req.params.id, name: cleanName });
     res.json({ message: 'Štítek uložen', item });
   } catch (err) {
@@ -253,7 +259,15 @@ router.get('/:slug', async (req, res) => {
         return dbv - da;
       });
 
-    res.json({ tag: { id: tag.id, name: tag.name, slug: tag.slug }, items });
+    res.json({
+      tag: {
+        id: tag.id,
+        name: lang && tag.name_en ? tag.name_en : tag.name,
+        name_en: tag.name_en,
+        slug: tag.slug,
+      },
+      items,
+    });
   } catch (err) {
     logger.fromError('tags_get_error', err);
     res.status(500).json({ error: 'Chyba serveru' });

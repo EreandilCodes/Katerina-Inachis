@@ -16,11 +16,23 @@ function pluralCs(n, one, few, many) {
 }
 
 const PAGE_SELECT = `
-  SELECT p.id, p.slug, p.title, p.intro_text, p.is_visible, p.sort_order, p.category_id,
+  SELECT p.id, p.slug, p.title, p.title_en, p.intro_text, p.intro_text_en, p.is_visible, p.sort_order, p.category_id,
          c.name AS category_name, COALESCE(c.is_visible, 1) AS category_is_visible
   FROM pages p
   LEFT JOIN categories c ON c.id = p.category_id
 `;
+
+// Public responses serve the localized english fields: when ?lang=en and an
+// English value exists, `title`/`intro_text` return it (raw fields stay
+// available as title_en / intro_text_en). Admin reads stay unlocalized.
+function localizeRows(rows, lang) {
+  if (lang !== 'en') return rows;
+  return rows.map((row) => ({
+    ...row,
+    title: row.title_en || row.title,
+    intro_text: row.intro_text_en || row.intro_text,
+  }));
+}
 
 function normalizeVisibility(value) {
   return value === false || value === 0 || value === '0' ? 0 : 1;
@@ -32,10 +44,10 @@ function isValidSlug(slug) {
 
 // GET /api/pages — public list (intro texts + menu metadata; visibility is
 // respected by the public navigation, hidden pages stay directly accessible)
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
     const rows = await db.prepare(`${PAGE_SELECT} ORDER BY p.id`).all();
-    res.json(rows);
+    res.json(localizeRows(rows, req.query.lang));
   } catch (err) {
     logger.fromError('pages_list_error', err);
     res.status(500).json({ error: 'Chyba serveru' });
@@ -47,7 +59,7 @@ router.get('/:slug', async (req, res) => {
   try {
     const page = await db.prepare(`${PAGE_SELECT} WHERE p.slug = ?`).get(req.params.slug);
     if (!page) return res.status(404).json({ error: 'Stránka nenalezena' });
-    res.json(page);
+    res.json(localizeRows([page], req.query.lang)[0]);
   } catch (err) {
     logger.fromError('pages_get_error', err);
     res.status(500).json({ error: 'Chyba serveru' });
@@ -59,13 +71,16 @@ router.get('/:slug', async (req, res) => {
 // decides what a path renders. Visibility controls the public navigation only.
 router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
-    const { title, slug, category_id, sort_order, is_visible } = req.body || {};
+    const { title, title_en, slug, category_id, sort_order, is_visible } = req.body || {};
 
     if (typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ error: 'Název stránky je povinný' });
     }
     if (title.trim().length > MAX_TITLE_LENGTH) {
       return res.status(400).json({ error: `Název stránky je příliš dlouhý (max ${MAX_TITLE_LENGTH} znaků)` });
+    }
+    if (typeof title_en === 'string' && title_en.trim().length > MAX_TITLE_LENGTH) {
+      return res.status(400).json({ error: `Anglický název stránky je příliš dlouhý (max ${MAX_TITLE_LENGTH} znaků)` });
     }
     if (typeof slug !== 'string' || !isValidSlug(slug)) {
       return res.status(400).json({ error: 'Neplatná URL (použijte malá písmena, číslice a spojovníky)' });
@@ -78,10 +93,11 @@ router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (re
       if (!cat) return res.status(400).json({ error: 'Neznámá kategorie' });
     }
 
+    const cleanTitleEn = typeof title_en === 'string' ? title_en.trim() : '';
     const result = await db.prepare(`
-      INSERT INTO pages (slug, title, intro_text, category_id, is_visible, sort_order)
-      VALUES (?, ?, '', ?, ?, ?)
-    `).run(slug, title.trim(), catId, normalizeVisibility(is_visible), Number(sort_order) || 0);
+      INSERT INTO pages (slug, title, title_en, intro_text, category_id, is_visible, sort_order)
+      VALUES (?, ?, ?, '', ?, ?, ?)
+    `).run(slug, title.trim(), cleanTitleEn, catId, normalizeVisibility(is_visible), Number(sort_order) || 0);
 
     const item = await db.prepare(`${PAGE_SELECT} WHERE p.id = ?`).get(result.lastInsertRowid);
     logger.info('page_created', { id: result.lastInsertRowid, slug, title });
@@ -130,6 +146,28 @@ router.put('/:slug', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async
       title = body.title.trim();
     }
 
+    let titleEn = current.title_en || '';
+    if (body.title_en !== undefined) {
+      if (typeof body.title_en !== 'string') {
+        return res.status(400).json({ error: 'Chybí anglický název stránky' });
+      }
+      if (body.title_en.trim().length > MAX_TITLE_LENGTH) {
+        return res.status(400).json({ error: `Anglický název stránky je příliš dlouhý (max ${MAX_TITLE_LENGTH} znaků)` });
+      }
+      titleEn = body.title_en.trim();
+    }
+
+    let introTextEn = current.intro_text_en || '';
+    if (body.intro_text_en !== undefined) {
+      if (typeof body.intro_text_en !== 'string') {
+        return res.status(400).json({ error: 'Chybí anglický text úvodu' });
+      }
+      if (body.intro_text_en.length > MAX_INTRO_LENGTH) {
+        return res.status(400).json({ error: `Anglický text úvodu je příliš dlouhý (max ${MAX_INTRO_LENGTH} znaků)` });
+      }
+      introTextEn = body.intro_text_en;
+    }
+
     let catId = current.category_id;
     if (body.category_id !== undefined) {
       catId = body.category_id === null || body.category_id === '' ? null : (Number(body.category_id) || null);
@@ -143,9 +181,9 @@ router.put('/:slug', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async
     const sort_order = body.sort_order !== undefined ? Number(body.sort_order) || 0 : current.sort_order;
 
     await db.prepare(`
-      UPDATE pages SET intro_text = ?, title = ?, category_id = ?, is_visible = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+      UPDATE pages SET intro_text = ?, intro_text_en = ?, title = ?, title_en = ?, category_id = ?, is_visible = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
       WHERE slug = ?
-    `).run(introText, title, catId, is_visible, sort_order, slug);
+    `).run(introText, introTextEn, title, titleEn, catId, is_visible, sort_order, slug);
 
     const item = await db.prepare(`${PAGE_SELECT} WHERE p.slug = ?`).get(slug);
     logger.info('page_updated', { slug });

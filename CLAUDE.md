@@ -12,6 +12,8 @@ npm start                # Production: node backend/server.js
 npm run dev              # Development with nodemon
 npm run test:homepage    # Homepage newest-tile rows (tests/homepage.mjs)
 npm run test:gallery     # Gallery optimization + persistence (tests/gallery.mjs)
+npm run test:bilingual   # EN fields for tags/categories/pages (tests/bilingual.mjs)
+npm run test:cardorder   # Listing-card order body→img→meta (tests/card-order.mjs)
 ```
 
 **Access Points:**
@@ -334,6 +336,8 @@ assigned from each editor's tag-chips input (`*TagsChips`/`*TagsInput` in
   the cover image (texts/blog/programming/friend posts:
   `Title → Perex → Tags → Image → Content`; artworks/jewelry have no perex:
   `Title → Tags → Image → Content`). Never move the `.detail-tags` block.
+  Detail view order is fixed and different from listing cards (see the Card
+  layout rule in Known Rules).
 - Public tag pages live at `/tag/<slug>` (`frontend/js/public.js`
   `renderTagPage()`, `TAG_SECTION_KEYS` maps a content type to its public
   section URL). Each tagged item is listed once per section, in published-only
@@ -357,7 +361,52 @@ assigned from each editor's tag-chips input (`*TagsChips`/`*TagsInput` in
 - i18n keys: `empty.tags` / `empty.tagsDesc` (cs + en); tag-page section labels
   reuse the existing nav keys.
 
+## Bilingual content (tags, categories, pages)
+
+Tags, Categories and Pages carry optional English fields that are edited in the
+**same admin form** as the Czech fields:
+
+- Columns: `categories.name_en`, `tags.name_en`, `pages.title_en`,
+  `pages.intro_text_en` (all `TEXT NOT NULL DEFAULT ''`, added additively).
+  `backend/database.js` backfills the seeded subcategories (`Knihy/Povídky/Básně`
+  → `Books/Stories/Poems`) and the seven system pages
+  (`DEFAULT_PAGE_TITLES_EN` → e.g. `Texts`, `Drawing and painting`, `Blog`).
+  Do not reorder the startup `ALTER`s: the pages `title_en`/`intro_text_en`
+  ALTERs must run **before** the pages seed INSERT, which references `title_en`.
+- Resolution rules (immutable):
+  - **Tags**: CS `name` drives `slug`/`name_key` (immutable); `name_en` is free
+    display text. Both fields always ship in public responses; with
+    `?lang=en` the public `name` is coalesced to `name_en || name` server-side
+    (chips + tag page). PUT uses `name_en ?? old` so omitting the field keeps
+    the current value and sending `""` clears it.
+  - **Categories**: the server **never** localizes `name` (the frontend needs
+    the CS name for the `?category=` filter query). The `<subcat>` navigation
+    label and section header come from the `categoryLabel()` helper:
+    EN → `name_en` → i18n `nav.<slug>` key → `name || slug`; CS → i18n key →
+    `name`. Admin rows show the EN name as a small subline under the CS name.
+  - **Pages**: `GET /api/pages` and `/:slug` expose raw `title_en`/`intro_text_en`
+    and, when `?lang=en`, coalesce `title`/`intro_text` to the EN value
+    (`localizeRows()` in `backend/routes/pages.js`). The nav copies the
+    localized title for `data-menu-page` links; `pageIntro()` passes
+    `langParam()` so intro paragraphs localize too.
+- Admin EN inputs live in `frontend/admin.html` (category `name_en` max 100,
+  tag `name_en` max 100, page `title_en` max 200, page `intro_text_en` max
+  20000 via the `page_<slug>_en` textareas in `frontend/admin/pages.js`). A
+  missing EN field defaults to the Czech value on the public site — never to
+  an empty string.
+- `frontend/js/public.js` `detailTagsHtml()` and `categoryLabel()` are the only
+  places that decide how EN labels render publicly; keep the i18n `nav.*` keys
+  as the fallback chain for categories.
+
 ## Known Rules
+
+**Card layout rule (do not break):** every listing `.card` in `frontend/js/public.js`
+renders as `.card-body` (category, title, excerpt) → `.card-img` → `.card-meta`
+(Texty cards: perex above the cover image; exists in `renderTextCard`,
+`renderBlogCard`, `renderProgrammingCard`, the friend-post card in
+`renderFriendPage` and the `/tag/<slug>` card in `renderTagPage`). This order is
+enforced by `tests/card-order.mjs`. The **detail** view keeps a different,
+fixed order: `Title → Perex → (Tags) → Image → Content`.
 
 1. ALL routes use `logger` — no console.log in backend
 2. ALL routes use `{ AuthMiddleware }` named import

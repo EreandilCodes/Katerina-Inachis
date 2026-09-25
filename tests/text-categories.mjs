@@ -299,7 +299,8 @@ try {
       return row ? [...row.querySelectorAll('td')].map((td) => td.textContent.trim()) : null;
     });
     assert(!!cells, 'Povídky row not found');
-    assert(cells[0] === 'Povídky', `col0="${cells[0]}"`);
+    assert(cells[0].split('\n')[0] === 'Povídky', `col0="${cells[0]}"`);
+    assert(cells[0].includes('Stories'), `col0 lacks EN subline: "${cells[0]}"`);
     assert(cells[1] === 'Texty', `col1 (Hlavní)="${cells[1]}"`);
     assert(cells[2].includes('/texty/povidky'), `col2 (Slug)="${cells[2]}"`);
     assert(cells[3] === 'Viditelná', `col3 (Viditelnost)="${cells[3]}"`);

@@ -40,7 +40,10 @@ export class TagsManager {
     }
     tbody.innerHTML = this.tags.map((t) => `
       <tr>
-        <td class="td-title">${escHtml(t.name)}</td>
+        <td class="td-title">
+          ${escHtml(t.name)}
+          ${t.name_en ? `<br><span style="font-size:0.75rem;color:var(--ink-dim)">${escHtml(t.name_en)}</span>` : ''}
+        </td>
         <td><code class="category-slug">/tag/${escHtml(t.slug)}</code></td>
         <td>${t.item_count}</td>
         <td class="td-actions">
@@ -61,6 +64,7 @@ export class TagsManager {
 
     document.getElementById('tagModalTitle').textContent = item ? 'Upravit štítek' : 'Nový štítek';
     form.elements.name.value = item?.name || '';
+    form.elements.name_en.value = item?.name_en || '';
     const preview = document.getElementById('tagSlugPreview');
     if (preview) preview.textContent = '/tag/' + (item?.slug || slugify(form.elements.name.value.trim() || '…'));
 
@@ -83,7 +87,7 @@ export class TagsManager {
   async saveTag() {
     const form = document.getElementById('tagForm');
     if (!form) return;
-    const body = { name: form.elements.name.value.trim() };
+    const body = { name: form.elements.name.value.trim(), name_en: form.elements.name_en.value.trim() };
     if (!body.name) {
       this.admin.showNotification('Název štítku je povinný', 'error');
       return;

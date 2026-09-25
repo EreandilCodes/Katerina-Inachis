@@ -22,6 +22,17 @@ export const DEFAULT_PAGE_TITLES = {
   'o-mne':      'O mně',
   kontakt:      'Kontakt',
 };
+// English titles for the seeded system pages (bilingual pages; fallback is the
+// Czech title above). Extend only with entries present in DEFAULT_PAGE_TITLES.
+export const DEFAULT_PAGE_TITLES_EN = {
+  texty:        'Texts',
+  kresba:       'Drawing and painting',
+  blog:         'Blog',
+  programovani: 'Programming',
+  pratele:      'Friends',
+  'o-mne':      'About me',
+  kontakt:      'Contact',
+};
 export const DEFAULT_PAGE_SLUGS = Object.freeze(Object.keys(DEFAULT_PAGE_TITLES));
 
 // ── Mode detection ────────────────────────────────────────────────────────────
@@ -398,19 +409,32 @@ export async function initDatabase() {
   // Pages — public page intro texts
   await db.exec(`
     CREATE TABLE IF NOT EXISTS pages (
-      id         ${pk},
-      slug       TEXT UNIQUE NOT NULL,
-      title      TEXT NOT NULL DEFAULT '',
-      intro_text TEXT NOT NULL DEFAULT '',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      id            ${pk},
+      slug          TEXT UNIQUE NOT NULL,
+      title         TEXT NOT NULL DEFAULT '',
+      title_en      TEXT NOT NULL DEFAULT '',
+      intro_text    TEXT NOT NULL DEFAULT '',
+      intro_text_en TEXT NOT NULL DEFAULT '',
+      created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  // Additive migrations for databases created before the bilingual columns
+  // existed (must run BEFORE the seed below, which may reference them).
+  try { await db.exec('ALTER TABLE pages ADD COLUMN title_en TEXT NOT NULL DEFAULT \'\''); } catch (_e) {}
+  try { await db.exec('ALTER TABLE pages ADD COLUMN intro_text_en TEXT NOT NULL DEFAULT \'\''); } catch (_e) {}
 
   for (const [slug, title] of Object.entries(DEFAULT_PAGE_TITLES)) {
     await db.prepare(
-      `INSERT INTO pages (slug, title, intro_text) VALUES (?, ?, '') ON CONFLICT (slug) DO NOTHING`
-    ).run(slug, title);
+      `INSERT INTO pages (slug, title, title_en, intro_text) VALUES (?, ?, ?, '') ON CONFLICT (slug) DO NOTHING`
+    ).run(slug, title, DEFAULT_PAGE_TITLES_EN[slug] || '');
+  }
+  // Backfill the English title for rows seeded before title_en existed
+  // (additive, idempotent — only touches empty values).
+  for (const [slug, titleEn] of Object.entries(DEFAULT_PAGE_TITLES_EN)) {
+    await db.prepare(
+      `UPDATE pages SET title_en = ? WHERE slug = ? AND (title_en IS NULL OR title_en = '')`
+    ).run(titleEn, slug);
   }
   console.log('✅ pages table ready');
 
@@ -422,6 +446,7 @@ export async function initDatabase() {
     CREATE TABLE IF NOT EXISTS categories (
       id         ${pk},
       name       TEXT NOT NULL UNIQUE,
+      name_en    TEXT NOT NULL DEFAULT '',
       slug       TEXT UNIQUE,
       page_slug  TEXT,
       is_visible INTEGER DEFAULT 1,
@@ -432,6 +457,7 @@ export async function initDatabase() {
   // Additive migrations for databases created before these columns existed
   // (SQLite cannot add a UNIQUE column via ALTER — enforced by the CREATE
   // TABLE above on fresh databases; slug uniqueness is also checked in code).
+  try { await db.exec('ALTER TABLE categories ADD COLUMN name_en TEXT NOT NULL DEFAULT \'\''); } catch (_e) {}
   try { await db.exec('ALTER TABLE categories ADD COLUMN slug TEXT'); } catch (_e) {}
   try { await db.exec('ALTER TABLE categories ADD COLUMN page_slug TEXT'); } catch (_e) {}
   console.log('✅ categories table ready');
@@ -457,11 +483,13 @@ export async function initDatabase() {
     CREATE TABLE IF NOT EXISTS tags (
       id         ${pk},
       name       TEXT NOT NULL,
+      name_en    TEXT NOT NULL DEFAULT '',
       name_key   TEXT NOT NULL UNIQUE,
       slug       TEXT NOT NULL UNIQUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  try { await db.exec('ALTER TABLE tags ADD COLUMN name_en TEXT NOT NULL DEFAULT \'\''); } catch (_e) {}
   await db.exec(`
     CREATE TABLE IF NOT EXISTS content_tags (
       id           ${pk},
@@ -484,18 +512,24 @@ export async function initDatabase() {
   // category without duplicating an existing record the admin may have
   // already created by hand.
   const textSubcategories = [
-    ['Knihy',   'knihy',   1],
-    ['Povídky', 'povidky', 2],
-    ['Básně',   'basne',   3],
+    ['Knihy',   'Books',   'knihy',   1],
+    ['Povídky', 'Stories', 'povidky', 2],
+    ['Básně',   'Poems',   'basne',   3],
   ];
-  for (const [name, slug, sortOrder] of textSubcategories) {
+  for (const [name, nameEn, slug, sortOrder] of textSubcategories) {
     const existing = await db.prepare(
       'SELECT id FROM categories WHERE slug = ? OR name = ?'
     ).get(slug, name);
     if (!existing) {
       await db.prepare(
-        'INSERT INTO categories (name, slug, page_slug, is_visible, sort_order) VALUES (?, ?, ?, 1, ?)'
-      ).run(name, slug, 'texty', sortOrder);
+        'INSERT INTO categories (name, name_en, slug, page_slug, is_visible, sort_order) VALUES (?, ?, ?, ?, 1, ?)'
+      ).run(name, nameEn, slug, 'texty', sortOrder);
+    } else if (!existing.name_en) {
+      // Backfill English names on categories seeded before the column existed
+      // (additive, idempotent — only touches empty values).
+      await db.prepare(
+        'UPDATE categories SET name_en = ? WHERE id = ? AND (name_en IS NULL OR name_en = \'\')'
+      ).run(nameEn, existing.id);
     }
   }
   console.log('✅ text subcategories seeded (Knihy, Povídky, Básně)');

@@ -8,7 +8,7 @@ const router = express.Router();
 const MAX_NAME_LENGTH = 100;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
-const CATEGORY_SELECT = 'SELECT id, name, slug, page_slug, is_visible, sort_order FROM categories';
+const CATEGORY_SELECT = 'SELECT id, name, name_en, slug, page_slug, is_visible, sort_order FROM categories';
 
 // Group top-level (page_slug NULL) categories first, then children grouped by
 // parent page, each ordered by sort_order. Same shape for SQLite and Postgres.
@@ -100,12 +100,15 @@ router.get('/admin/all', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, a
 // and no slug is given, the slug is generated from the name.
 router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (req, res) => {
   try {
-    const { name } = req.body || {};
+    const { name, name_en } = req.body || {};
     if (typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ error: 'Název kategorie je povinný' });
     }
     if (name.trim().length > MAX_NAME_LENGTH) {
       return res.status(400).json({ error: `Název kategorie je příliš dlouhý (max ${MAX_NAME_LENGTH} znaků)` });
+    }
+    if (typeof name_en === 'string' && name_en.trim().length > MAX_NAME_LENGTH) {
+      return res.status(400).json({ error: `Anglický název kategorie je příliš dlouhý (max ${MAX_NAME_LENGTH} znaků)` });
     }
 
     const page_slug = await normalizePageSlug(req.body.page_slug);
@@ -126,10 +129,11 @@ router.post('/', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (re
 
     const sort_order = Number(req.body.sort_order) || 0;
     const is_visible = normalizeVisibility(req.body.is_visible);
+    const cleanNameEn = typeof name_en === 'string' ? name_en.trim() : '';
 
     const result = await db.prepare(
-      `INSERT INTO categories (name, slug, page_slug, is_visible, sort_order) VALUES (?, ?, ?, ?, ?)`
-    ).run(name.trim(), slug, page_slug, is_visible, sort_order);
+      `INSERT INTO categories (name, name_en, slug, page_slug, is_visible, sort_order) VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(name.trim(), cleanNameEn, slug, page_slug, is_visible, sort_order);
 
     const item = await db.prepare(`${CATEGORY_SELECT} WHERE id = ?`).get(result.lastInsertRowid);
     logger.info('category_created', { id: result.lastInsertRowid, name, slug, page_slug });
@@ -166,6 +170,17 @@ router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (
       name = req.body.name.trim();
     }
 
+    let nameEn = current.name_en || '';
+    if (req.body && req.body.name_en !== undefined) {
+      if (typeof req.body.name_en !== 'string') {
+        return res.status(400).json({ error: 'Chybí anglický název kategorie' });
+      }
+      if (req.body.name_en.trim().length > MAX_NAME_LENGTH) {
+        return res.status(400).json({ error: `Anglický název kategorie je příliš dlouhý (max ${MAX_NAME_LENGTH} znaků)` });
+      }
+      nameEn = req.body.name_en.trim();
+    }
+
     if (req.body && req.body.slug !== undefined) {
       const slug = typeof req.body.slug === 'string' ? req.body.slug.trim().toLowerCase() : '';
       if (slug !== current.slug) {
@@ -186,8 +201,8 @@ router.put('/:id', AuthMiddleware.verifyToken, AuthMiddleware.adminOnly, async (
     const is_visible = req.body && req.body.is_visible !== undefined ? normalizeVisibility(req.body.is_visible) : current.is_visible;
 
     await db.prepare(
-      `UPDATE categories SET name = ?, page_slug = ?, is_visible = ?, sort_order = ? WHERE id = ?`
-    ).run(name, page_slug, is_visible, sort_order, id);
+      `UPDATE categories SET name = ?, name_en = ?, page_slug = ?, is_visible = ?, sort_order = ? WHERE id = ?`
+    ).run(name, nameEn, page_slug, is_visible, sort_order, id);
 
     // Keep text associations intact on rename: texts.category stores the
     // category name, so re-point the old name at the new one.

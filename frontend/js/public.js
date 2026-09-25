@@ -46,6 +46,20 @@ function updateStaticI18n() {
   }
 }
 
+// Localized display label for a category record. In EN mode the admin-provided
+// English name (categories.name_en) wins when set; otherwise the i18n nav key
+// (nav.<slug>); the raw CS name is the final fallback (and always used in CZ
+// mode, matching the pre-bilingual behaviour).
+function categoryLabel(cat, i) {
+  if (!cat || typeof cat !== 'object') return '';
+  const tFn = i || window.t || (k => k);
+  const en = window.getLang ? window.getLang() === 'en' : false;
+  if (en && cat.name_en && cat.name_en.trim()) return cat.name_en.trim();
+  const key = `nav.${cat.slug}`;
+  const translated = tFn(key);
+  return translated !== key && translated !== undefined ? translated : (cat.name || cat.slug || '');
+}
+
 // ── Safe Fetch ────────────────────────────────────────────────
 async function safeFetch(url) {
   const response = await fetch(url);
@@ -72,7 +86,7 @@ async function safeFetch(url) {
 async function pageIntro(slug) {
   let list = [];
   try {
-    list = await safeFetch('/api/pages');
+    list = await safeFetch('/api/pages' + langParam());
   } catch {
     list = [];
   }
@@ -378,13 +392,13 @@ async function renderHomepage() {
 function renderTextCard(t) {
   return `
     <div class="card" onclick="app.navigate('/texty/${esc(t.slug)}')">
-      ${t.cover_image ? `<div class="card-img"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}" loading="lazy"></div>` : ''}
       <div class="card-body">
         ${t.category ? `<span class="card-category">${esc(t.category)}</span>` : ''}
         <h3 class="card-title">${esc(t.title)}</h3>
         ${t.excerpt ? `<p class="card-excerpt">${esc(t.excerpt)}</p>` : ''}
-        <div class="card-meta">${fmtDate(t.published_at || t.created_at)}</div>
       </div>
+      ${t.cover_image ? `<div class="card-img"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}" loading="lazy"></div>` : ''}
+      <div class="card-meta">${fmtDate(t.published_at || t.created_at)}</div>
     </div>`;
 }
 
@@ -433,13 +447,13 @@ function renderFriendCard(f) {
 function renderBlogCard(b) {
   return `
     <div class="card" onclick="app.navigate('/blog/${esc(b.slug)}')">
-      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
       <div class="card-body">
         <span class="card-category">Blog</span>
         <h3 class="card-title">${esc(b.title)}</h3>
         ${b.excerpt ? `<p class="card-excerpt">${esc(b.excerpt)}</p>` : ''}
-        <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
       </div>
+      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
+      <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
     </div>`;
 }
 
@@ -447,13 +461,13 @@ function renderProgrammingCard(b) {
   const i = window.t || (k => k);
   return `
     <div class="card" onclick="app.navigate('/programovani/${esc(b.slug)}')">
-      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
       <div class="card-body">
         <span class="card-category">${i('nav.programming')}</span>
         <h3 class="card-title">${esc(b.title)}</h3>
         ${b.excerpt ? `<p class="card-excerpt">${esc(b.excerpt)}</p>` : ''}
-        <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
       </div>
+      ${b.cover_image ? `<div class="card-img"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}" loading="lazy"></div>` : ''}
+      <div class="card-meta">${fmtDate(b.published_at || b.created_at)}</div>
     </div>`;
 }
 
@@ -529,8 +543,7 @@ async function renderTextRoute(s1) {
     const cats = await safeFetch('/api/categories/public/all');
     const cat = cats.find(c => c.page_slug === 'texty' && c.slug === s1);
     if (cat) {
-      const labelKey = `nav.${s1}`;
-      const label = i(labelKey) !== labelKey ? i(labelKey) : (cat.name || s1);
+      const label = categoryLabel(cat, i);
       return renderTextsFiltered(cat.name, label);
     }
   } catch { /* fall through to the text detail lookup */ }
@@ -552,7 +565,9 @@ function detailExcerptHtml(excerpt) {
 function detailTagsHtml(tags) {
   const list = Array.isArray(tags) ? tags.filter(Boolean) : [];
   if (!list.length) return '';
-  return `<div class="detail-tags">${list.map(tg => `<a class="detail-tag" href="/tag/${esc(tg.slug)}">#${esc(tg.name)}</a>`).join('')}</div>`;
+  const en = window.getLang ? window.getLang() === 'en' : false;
+  const chip = (tg) => en && tg.name_en && tg.name_en.trim() ? tg.name_en : (tg.name || '');
+  return `<div class="detail-tags">${list.map(tg => `<a class="detail-tag" href="/tag/${esc(tg.slug)}">#${esc(chip(tg))}</a>`).join('')}</div>`;
 }
 
 async function renderTextDetail(slug) {
@@ -880,13 +895,13 @@ async function renderFriendPage(friendSlug) {
           <div class="content-grid content-grid--3">
             ${posts.map(p => `
               <div class="card" onclick="app.navigate('/pratele/${esc(friendSlug)}/${esc(p.slug)}')">
-                ${p.cover_image ? `<div class="card-img"><img src="${esc(p.cover_image)}" alt="${esc(p.title)}" loading="lazy"></div>` : ''}
                 <div class="card-body">
                   <span class="card-category">${esc(p.type)}</span>
                   <h3 class="card-title">${esc(p.title)}</h3>
                   ${p.excerpt ? `<p class="card-excerpt">${esc(p.excerpt)}</p>` : ''}
-                  <div class="card-meta">${fmtDate(p.published_at || p.created_at)}</div>
                 </div>
+                ${p.cover_image ? `<div class="card-img"><img src="${esc(p.cover_image)}" alt="${esc(p.title)}" loading="lazy"></div>` : ''}
+                <div class="card-meta">${fmtDate(p.published_at || p.created_at)}</div>
               </div>`).join('')}
           </div>` : `<div class="empty-state"><h3>${i('empty.posts')}</h3></div>`}
         </div>
@@ -973,13 +988,13 @@ async function renderTagPage(slug) {
           ${data.items.length
             ? `<div class="content-grid content-grid--3">${data.items.map(item => `
               <div class="card" onclick="app.navigate('${esc(item.url)}')">
-                ${item.cover_image ? `<div class="card-img"><img src="${esc(item.cover_image)}" alt="${esc(item.title)}" loading="lazy"></div>` : ''}
                 <div class="card-body">
                   <span class="card-category">${esc(tagItemLabel(item))}</span>
                   <h3 class="card-title">${esc(item.title)}</h3>
                   ${item.excerpt ? `<p class="card-excerpt">${esc(item.excerpt)}</p>` : ''}
-                  <div class="card-meta">${fmtDate(item.published_at || item.created_at)}</div>
                 </div>
+                ${item.cover_image ? `<div class="card-img"><img src="${esc(item.cover_image)}" alt="${esc(item.title)}" loading="lazy"></div>` : ''}
+                <div class="card-meta">${fmtDate(item.published_at || item.created_at)}</div>
               </div>`).join('')}</div>`
             : `<div class="empty-state"><h3>${i('empty.tags')}</h3><p>${i('empty.tagsDesc')}</p></div>`}
         </div>
@@ -1211,8 +1226,11 @@ async function syncPublicNav() {
 
     const desktopNav = document.getElementById('desktopNav');
     const mobileNav = document.getElementById('mobileNav');
+    const navEn = window.getLang ? window.getLang() === 'en' : false;
     additions.forEach(p => {
-      const title = (p.title && p.title.trim()) ? p.title.trim() : p.slug;
+      const csTitle = (p.title && p.title.trim()) ? p.title.trim() : '';
+      const enTitle = (p.title_en && p.title_en.trim()) ? p.title_en.trim() : '';
+      const title = (navEn ? (enTitle || csTitle) : csTitle) || p.slug;
       const existsDesktop = desktopNav && desktopNav.querySelector(`a[href="/${p.slug}"]`);
       if (!existsDesktop) {
         const link = document.createElement('a');
@@ -1248,11 +1266,7 @@ async function syncPublicNav() {
     const children = (categories || [])
       .filter(c => c.page_slug && c.is_visible)
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || (a.id - b.id));
-    const subLabel = (c) => {
-      const key = `nav.${c.slug}`;
-      const translated = tFn(key);
-      return translated !== key && translated !== undefined ? translated : (c.name || c.slug);
-    };
+    const subLabel = (c) => categoryLabel(c, tFn);
 
     document.querySelectorAll('#desktopNav .nav-dropdown a[data-subcat]').forEach(n => n.remove());
     document.querySelectorAll('#mobileNav a.nav-mobile-sub[data-subcat]').forEach(n => n.remove());

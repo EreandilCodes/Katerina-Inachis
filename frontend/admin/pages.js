@@ -49,7 +49,12 @@ export class PagesManager {
           ${escHtml(p.title || p.slug)}
           <span style="font-weight:400;color:var(--ink-dim);font-size:0.75rem">— /${escHtml(PAGE_ROUTES[p.slug] || p.slug)}</span>
         </label>
-        <textarea class="form-textarea" id="page_${escHtml(p.slug)}" name="${escHtml(p.slug)}" rows="3" placeholder="Úvodní text stránky (nepovinné)">${escHtml(p.intro_text || '')}</textarea>
+        <textarea class="form-textarea" id="page_${escHtml(p.slug)}" name="${escHtml(p.slug)}" rows="3" placeholder="Úvodní text stránky (CZ, nepovinné)">${escHtml(p.intro_text || '')}</textarea>
+        <label class="form-label" for="page_${escHtml(p.slug)}_en" style="margin-top:0.75rem">
+          EN
+          <span style="font-weight:400;color:var(--ink-dim);font-size:0.75rem">— anglická verze úvodního textu</span>
+        </label>
+        <textarea class="form-textarea" id="page_${escHtml(p.slug)}_en" name="${escHtml(p.slug)}_en" rows="3" placeholder="Page intro text (EN, optional)">${escHtml(p.intro_text_en || '')}</textarea>
       </div>`).join('') +
       `<div style="margin-top:1.5rem">
         <button type="submit" class="btn-admin btn-admin--primary">Uložit vše</button>
@@ -67,7 +72,8 @@ export class PagesManager {
   async saveAll(form) {
     const promises = this.pages.map(p => {
       const el = form.elements[p.slug];
-      return this.savePage(p.slug, el ? el.value : '');
+      const elEn = form.elements[p.slug + '_en'];
+      return this.savePage(p.slug, el ? el.value : '', elEn ? elEn.value : '');
     });
 
     try {
@@ -79,11 +85,11 @@ export class PagesManager {
     }
   }
 
-  async savePage(slug, introText) {
+  async savePage(slug, introText, introTextEn = '') {
     const response = await fetch(`/api/pages/${encodeURIComponent(slug)}`, {
       method: 'PUT',
       headers: { ...this.auth.getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intro_text: introText })
+      body: JSON.stringify({ intro_text: introText, intro_text_en: introTextEn })
     });
     const ct = response.headers.get('content-type');
     if (!response.ok) {

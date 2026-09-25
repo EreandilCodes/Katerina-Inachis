@@ -45,7 +45,7 @@ export function slugifyTag(name) {
 export async function getTagsForContent(contentType, contentId) {
   if (!isValidContentType(contentType)) return [];
   return db.prepare(`
-    SELECT t.id, t.name, t.slug
+    SELECT t.id, t.name, t.name_en, t.slug
     FROM tags t
     JOIN content_tags c ON c.tag_id = t.id
     WHERE c.content_type = ? AND c.content_id = ?

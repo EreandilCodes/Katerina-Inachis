@@ -90,7 +90,10 @@ export class MenuManager {
     const url = pageSlug && c.slug ? `/${pageSlug}/${c.slug}` : (c.slug ? `/${c.slug}` : '');
     return `
       <tr>
-        <td class="td-title">${escHtml(c.name)}</td>
+        <td class="td-title">
+          ${escHtml(c.name)}
+          ${c.name_en ? `<br><span style="font-size:0.75rem;color:var(--ink-dim)">${escHtml(c.name_en)}</span>` : ''}
+        </td>
         <td>${pageTitle ? escHtml(pageTitle) : '<span style="color:var(--ink-dim)">—</span>'}</td>
         <td>${url ? `<code class="category-slug">${escHtml(url)}</code>` : '<span style="color:var(--ink-dim)">—</span>'}</td>
         <td><span class="badge ${c.is_visible ? 'badge-published' : 'badge-draft'}">${c.is_visible ? 'Viditelná' : 'Skrytá'}</span></td>
@@ -141,6 +144,7 @@ export class MenuManager {
 
     document.getElementById('categoryModalTitle').textContent = item ? 'Upravit kategorii' : 'Nová kategorie';
     form.elements.name.value = item?.name || '';
+    form.elements.name_en.value = item?.name_en || '';
     form.elements.sort_order.value = item?.sort_order ?? 0;
     form.elements.is_visible.checked = item ? !!item.is_visible : true;
 
@@ -181,6 +185,7 @@ export class MenuManager {
     if (!form) return;
     const body = {
       name: form.elements.name.value.trim(),
+      name_en: form.elements.name_en.value.trim(),
       sort_order: Number(form.elements.sort_order.value) || 0,
       is_visible: form.elements.is_visible.checked ? 1 : 0,
       page_slug: form.elements.page_slug.value || null,
@@ -259,6 +264,7 @@ export class MenuManager {
       this.categories.map(c => `<option value="${c.id}">${escHtml(c.name)}${c.is_visible ? '' : ' (skrytá)'}</option>`).join('');
 
     form.elements.title.value = item?.title || '';
+    form.elements.title_en.value = item?.title_en || '';
     form.elements.slug.value = item?.slug || '';
     form.elements.slug.disabled = !!item; // slug/URL is fixed after creation
     select.value = item?.category_id ?? '';
@@ -280,6 +286,7 @@ export class MenuManager {
     if (!form) return;
     const body = {
       title: form.elements.title.value.trim(),
+      title_en: form.elements.title_en.value.trim(),
       category_id: form.elements.category_id.value ? Number(form.elements.category_id.value) : null,
       sort_order: Number(form.elements.sort_order.value) || 0,
       is_visible: form.elements.is_visible.checked ? 1 : 0,
