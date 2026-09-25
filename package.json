@@ -18,7 +18,8 @@
     "test:gallery": "node tests/gallery.mjs",
     "test:tags": "node tests/tags.mjs",
     "test:bilingual": "node tests/bilingual.mjs",
-    "test:cardorder": "node tests/card-order.mjs"
+    "test:cardorder": "node tests/card-order.mjs",
+    "test:ytcaption": "node tests/yt-caption.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

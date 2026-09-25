@@ -120,7 +120,7 @@ class RichTextEditor {
       this.source.style.display = 'none';
     } else {
       // Visual → HTML: read from contenteditable into source
-      const html = this.content.innerHTML;
+      const html = this._normalizeYtCaptions(this.content.innerHTML);
       // Clean up browser-generated empty content
       const cleaned = (html === '<br>' || html === '<br/>') ? '' : html;
       this.source.value = cleaned;
@@ -157,12 +157,52 @@ class RichTextEditor {
       return;
     }
 
-    const html =
+    // Optional caption that belongs to this video only. Plain text: any HTML
+    // in it is escaped so it can never inject markup on its own.
+    const caption = prompt('Popisek k videu (nepovinn\u00fd):');
+    const embed =
       '<div class="yt-embed">' +
         '<iframe src="https://www.youtube-nocookie.com/embed/' + videoId + '" allowfullscreen></iframe>' +
-      '</div><p><br></p>';
+      '</div>';
+
+    // With a caption the video is wrapped in a <figure>; without one the legacy
+    // bare .yt-embed markup is kept so older stored content stays consistent.
+    const trimmed = caption && caption.trim();
+    const html = trimmed
+      ? '<figure class="yt-figure">' + embed + '<figcaption class="yt-caption">' + this._escapeHtml(trimmed) + '</figcaption></figure><p><br></p>'
+      : embed + '<p><br></p>';
 
     document.execCommand('insertHTML', false, html);
+  }
+
+  // ── YouTube caption helpers ────────────────────────────────
+
+  _escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Removes figure.yt-figure wrappers whose caption is empty (e.g. when the
+  // author deletes all caption text) so no stray empty <figcaption>/<figure>
+  // element is ever saved. Output stays backward compatible: a caption-less
+  // video becomes the legacy bare .yt-embed markup.
+  _normalizeYtCaptions(html) {
+    if (typeof html !== 'string' || html.indexOf('yt-figure') === -1) return html;
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    const emptyFigures = [];
+    container.querySelectorAll('figure.yt-figure').forEach((fig) => {
+      const caption = fig.querySelector('.yt-caption');
+      if (!caption || caption.textContent.trim() === '') emptyFigures.push(fig);
+    });
+    emptyFigures.forEach((fig) => fig.replaceWith(...Array.from(fig.childNodes)));
+
+    return container.innerHTML;
   }
 
   _parseYouTubeId(url) {
@@ -196,9 +236,9 @@ class RichTextEditor {
 
   getValue() {
     if (this.mode === 'html') {
-      return this.source.value;
+      return this._normalizeYtCaptions(this.source.value);
     }
-    return this.content.innerHTML;
+    return this._normalizeYtCaptions(this.content.innerHTML);
   }
 
   setValue(html) {

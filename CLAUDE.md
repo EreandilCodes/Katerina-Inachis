@@ -398,6 +398,35 @@ Tags, Categories and Pages carry optional English fields that are edited in the
   places that decide how EN labels render publicly; keep the i18n `nav.*` keys
   as the fallback chain for categories.
 
+## YouTube embed + optional caption
+
+`frontend/js/rich-text-editor.js` is the **one shared** rich-text editor for
+texts, blog, programming, admin friend posts and the friend portal (all five
+integrators call the same class; content is stored as raw HTML in the
+`content` / `content_en` columns and rendered via `innerHTML` on the public
+detail pages — no sanitizer anywhere, admin/friend HTML is trusted by design).
+
+- Inserting a video prompts for the URL, then for an **optional caption**
+  (plain text). With a caption the video is wrapped in
+  `<figure class="yt-figure"><div class="yt-embed">…</div><figcaption class="yt-caption">…</figcaption></figure>`;
+  **without** a caption the legacy bare `<div class="yt-embed">…</div>` markup
+  is produced, so old and new content stay byte-compatible.
+- The caption belongs to its single video only (figure/figcaption per embed);
+  captions are **escaped at insert time** so prompt input can never inject
+  markup, and they are editable inline (visual mode) or via the HTML tab.
+- `_normalizeYtCaptions()` (used by `getValue()` and the Visual→HTML tab
+  switch) **unwraps** any `figure.yt-figure` whose `.yt-caption` is empty or
+  whitespace-only, so an emptied caption never leaves a stray
+  `<figure>`/`<figcaption>` element in saved content or on the public site.
+- CSS: `.yt-figure` / `.yt-caption` in `frontend/css/public.css` and
+  `frontend/css/rich-text-editor.css` (caption is centered, italic,
+  `--ink-mid`/`--ink-dim`). Do not move the caption outside its `figure`.
+- The editor must stay dependency-free; do not switch to a library.
+- Tests: `tests/yt-caption.mjs` (`npm run test:ytcaption`) covers store/edit/
+  multiple-video/backcompat for blog + friend posts and the admin editor round
+  trip; an editor `execCommand`-based insert test must set a real caret Range
+  inside `.rte-content` before clicking the toolbar YouTube button.
+
 ## Known Rules
 
 **Card layout rule (do not break):** every listing `.card` in `frontend/js/public.js`

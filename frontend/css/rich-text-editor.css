@@ -142,3 +142,15 @@
   height: 100%;
   border: 0;
 }
+
+/* YouTube video with an optional caption */
+.yt-figure { margin: 1rem 0; }
+.yt-figure .yt-embed { margin: 0; }
+.yt-caption {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--ink-dim, #666);
+  text-align: center;
+  line-height: 1.5;
+}
