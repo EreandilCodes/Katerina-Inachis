@@ -84,16 +84,18 @@ async function waitAppContent(page) {
   });
 }
 
-// Document order of the rendered detail markers: title, excerpt, cover, content.
+// Document order of the rendered detail markers: title, excerpt, content perex, cover, content.
 async function detailOrder(page) {
   return page.evaluate(() => {
     const sel = '.detail-page .detail-page__inner .detail-title,' +
                 '.detail-page .detail-page__inner .detail-excerpt,' +
+                '.detail-page .detail-page__inner .detail-perex,' +
                 '.detail-page .detail-page__inner .detail-cover,' +
-                '.detail-page .detail-page__inner .text-content';
+                '.detail-page .detail-page__inner > .text-content';
     return [...document.querySelectorAll(sel)].map((n) => {
       if (n.classList.contains('detail-title')) return 'title';
       if (n.classList.contains('detail-excerpt')) return 'excerpt';
+      if (n.classList.contains('detail-perex')) return 'perex';
       if (n.classList.contains('detail-cover')) return 'cover';
       return 'content';
     });
@@ -157,6 +159,28 @@ try {
       'order wrong: ' + JSON.stringify(await detailOrder(page)));
     assert(await excerptShown(page, `${MARK} perex C1`), 'perex text missing above image');
     assert(await imageLoaded(page), 'cover image did not load');
+  });
+
+  // ── Case 1b — perex created with the editor's Perex button (leading
+  // blockquote in the content) must render between the title and the image ──
+  await check('Case 1b: content blockquote perex renders above the cover image', async () => {
+    const p = (await createPost('texts', token, {
+      title: `${MARK} C1B ${TS}`, category: QA_CAT, excerpt: '',
+      content: `<blockquote>${MARK} perex z editoru</blockquote><p>${MARK} obsah C1B</p>`,
+      cover_image: QA_PNG_URL, is_published: 1, sort_order: 0,
+    })).item;
+    qaPostIds.texts.push(p.id);
+    await openPost(page, `/texty/${p.slug}`);
+    assert(JSON.stringify(await detailOrder(page)) === JSON.stringify(['title', 'perex', 'cover', 'content']),
+      'order wrong: ' + JSON.stringify(await detailOrder(page)));
+    const perexShown = await page.evaluate((t) => {
+      const el = document.querySelector('.detail-perex');
+      return !!el && el.textContent.includes(t) && !!el.querySelector('blockquote');
+    }, `${MARK} perex z editoru`);
+    assert(perexShown, 'content perex blockquote missing above the image');
+    const restText = await page.evaluate(() => document.querySelector('.detail-page__inner > .text-content')?.textContent || '');
+    assert(restText.includes(`${MARK} obsah C1B`) && !restText.includes(`${MARK} perex z editoru`),
+      'content not split correctly (perex duplicated or lost)');
   });
 
   // ── Case 2 — perex without image ──────────────────────────

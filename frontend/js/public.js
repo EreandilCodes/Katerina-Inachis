@@ -425,6 +425,18 @@ function cardLoading(index) {
     : {};
 }
 
+// Detail-cover markup. The detail cover is the post's main image: it displays
+// at up to 900px wide (max-width in .detail-cover) and is above the fold, so
+// it must load eagerly, not lazy. Serving the full-size /uploads/gallery
+// original meant multi-MB PNGs for a ~900px-wide box; the /img/gallery route
+// (existing sharp pipeline) serves the same image as WebP. w=1600 requests
+// full detail (gallery sources are ≤1536px wide, withoutEnlargement caps the
+// variant at source size) — same pixels, a fraction of the bytes. Non-gallery
+// URLs pass through unchanged.
+function detailCoverImgHtml(src, alt) {
+  return `<img src="${esc(thumbUrl(src, 1600))}" alt="${esc(alt)}" loading="eager" fetchpriority="high">`;
+}
+
 function renderTextCard(t, index) {
   return `
     <div class="card" onclick="app.navigate('/texty/${esc(t.slug)}')">
@@ -593,6 +605,40 @@ function detailExcerptHtml(excerpt) {
   return excerpt ? `<p class="detail-excerpt">${esc(excerpt)}</p>` : '';
 }
 
+// The editor's "Perex" toolbar button wraps the opening paragraph of the
+// content in a <blockquote>. The content div renders after the cover image,
+// so without help that perex would show up BELOW the image. splitContentPerex()
+// peels that leading <blockquote> off the content: it renders above the cover
+// (detailContentPerexHtml) and the rest of the content stays in .text-content.
+// Only a blockquote at the very start of the content counts — blockquotes in
+// the middle of the text are real quotations and must not be moved.
+// The returned perex/remainder are content HTML (same trust level as the
+// content the app already renders raw in .text-content).
+function splitContentPerex(content) {
+  if (typeof content !== 'string') return { perex: '', rest: content };
+  const trimmed = content.replace(/^\s+/, '');
+  const m = /^<blockquote[^>]*>[\s\S]*?<\/blockquote>/i.exec(trimmed);
+  if (!m) return { perex: '', rest: content };
+  return { perex: m[0], rest: trimmed.slice(m[0].length).replace(/^\s+/, '') };
+}
+
+// Perex from content: rendered between the title block and the cover image.
+// Uses its own .detail-perex wrapper (not .text-content) so order checks can
+// distinguish it from the main content; the blockquote inside is styled by
+// the shared .detail-perex blockquote rule in public.css. Nothing renders
+// when the content has no leading blockquote.
+function detailContentPerexHtml(content) {
+  const { perex } = splitContentPerex(content);
+  return perex ? `<div class="detail-perex">${perex}</div>` : '';
+}
+
+// The remainder of post content after the leading perex blockquote was peeled
+// off (splitContentPerex). Empty content falls back to the given placeholder.
+function renderDetailRest(content, emptyPlaceholder) {
+  const { rest } = splitContentPerex(content);
+  return `<div class="text-content">${rest || emptyPlaceholder}</div>`;
+}
+
 // Tags render between the perex and the cover image (Title → Perex → Tags →
 // Image → Content) so they are attached to the post but never split the
 // headline from its image. Artworks and jewelry have no perex, so there the
@@ -622,9 +668,10 @@ async function renderTextDetail(slug) {
             <div class="detail-meta">${fmtDate(t.published_at || t.created_at)}</div>
           </div>
           ${detailExcerptHtml(t.excerpt)}
+          ${detailContentPerexHtml(t.content)}
           ${detailTagsHtml(t.tags)}
-          ${t.cover_image ? `<div class="detail-cover"><img src="${esc(t.cover_image)}" alt="${esc(t.title)}"></div>` : ''}
-          <div class="text-content">${t.content || '<p>' + i('content.unavailable') + '</p>'}</div>
+          ${t.cover_image ? `<div class="detail-cover">${detailCoverImgHtml(t.cover_image, t.title)}</div>` : ''}
+          ${renderDetailRest(t.content, '<p>' + i('content.unavailable') + '</p>')}
         </div>
       </div>`);
   } catch (err) {
@@ -679,7 +726,7 @@ async function renderArtworkDetail(slug) {
             ${a.medium || a.year ? `<div class="detail-meta">${[a.medium, a.year].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
           </div>
           ${detailTagsHtml(a.tags)}
-          ${a.cover_image ? `<div class="detail-cover"><img src="${esc(a.cover_image)}" alt="${esc(a.title)}"></div>` : ''}
+          ${a.cover_image ? `<div class="detail-cover">${detailCoverImgHtml(a.cover_image, a.title)}</div>` : ''}
           ${a.description ? `<div class="text-content"><p>${esc(a.description)}</p></div>` : ''}
           ${images.length > 1 ? `
           <div class="carousel" style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
@@ -744,7 +791,7 @@ async function renderJewelryDetail(slug) {
             <hr class="ornament-line">
           </div>
           ${detailTagsHtml(j.tags)}
-          ${j.cover_image ? `<div class="detail-cover" style="max-width:600px;aspect-ratio:1"><img src="${esc(j.cover_image)}" alt="${esc(j.title)}"></div>` : ''}
+          ${j.cover_image ? `<div class="detail-cover" style="max-width:600px;aspect-ratio:1">${detailCoverImgHtml(j.cover_image, j.title)}</div>` : ''}
           <div class="text-content" style="margin-top:2rem">
             ${j.description ? `<p>${esc(j.description)}</p>` : ''}
             ${j.materials ? `<p><strong>${i('jewelry.materials')}:</strong> ${esc(j.materials)}</p>` : ''}
@@ -814,9 +861,10 @@ async function renderBlogPost(slug) {
             <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
           </div>
           ${detailExcerptHtml(b.excerpt)}
+          ${detailContentPerexHtml(b.content)}
           ${detailTagsHtml(b.tags)}
-          ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
-          <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
+          ${b.cover_image ? `<div class="detail-cover">${detailCoverImgHtml(b.cover_image, b.title)}</div>` : ''}
+          ${renderDetailRest(b.content, '<p>' + i('content.unavailable') + '</p>')}
         </div>
       </div>`);
   } catch (err) {
@@ -867,9 +915,10 @@ async function renderProgrammingPost(slug) {
             <div class="detail-meta">${fmtDate(b.published_at || b.created_at)}</div>
           </div>
           ${detailExcerptHtml(b.excerpt)}
+          ${detailContentPerexHtml(b.content)}
           ${detailTagsHtml(b.tags)}
-          ${b.cover_image ? `<div class="detail-cover"><img src="${esc(b.cover_image)}" alt="${esc(b.title)}"></div>` : ''}
-          <div class="text-content">${b.content || '<p>' + i('content.unavailable') + '</p>'}</div>
+          ${b.cover_image ? `<div class="detail-cover">${detailCoverImgHtml(b.cover_image, b.title)}</div>` : ''}
+          ${renderDetailRest(b.content, '<p>' + i('content.unavailable') + '</p>')}
         </div>
       </div>`);
   } catch (err) {
@@ -966,9 +1015,10 @@ async function renderFriendPost(friendSlug, postSlug) {
             <div class="detail-meta">${fmtDate(post.published_at || post.created_at)}</div>
           </div>
           ${detailExcerptHtml(post.excerpt)}
+          ${detailContentPerexHtml(post.content)}
           ${detailTagsHtml(post.tags)}
-          ${post.cover_image ? `<div class="detail-cover"><img src="${esc(post.cover_image)}" alt="${esc(post.title)}"></div>` : ''}
-          ${post.content ? `<div class="text-content">${post.content}</div>` : ''}
+          ${post.cover_image ? `<div class="detail-cover">${detailCoverImgHtml(post.cover_image, post.title)}</div>` : ''}
+          ${post.content ? renderDetailRest(post.content, '') : ''}
           ${images.length > 1 ? `
           <div class="carousel" style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
             <div class="carousel-track">

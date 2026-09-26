@@ -746,6 +746,19 @@ button {
   text-align: center;
 }
 
+/* Perex created with the editor's "Perex" button (leading blockquote of the
+   content) also sits between the title and the cover image: Title → Perex →
+   Image → Content. Its blockquote shares the .text-content blockquote rule
+   and only adds the same closing rhythm as .detail-excerpt above. */
+.detail-perex {
+  max-width: var(--max-reading);
+  margin: 0 auto clamp(2rem, 5vw, 3rem);
+}
+
+.detail-perex blockquote {
+  margin: 0;
+}
+
 /* Tags sit between the perex and the cover image: Title → Perex → Tags →
    Image → Main content (Title → Tags → Image → Content for artworks/jewelry
    which have no perex). */
@@ -813,7 +826,8 @@ button {
   margin: 1.5em 0 0.5em;
 }
 
-.text-content blockquote {
+.text-content blockquote,
+.detail-perex blockquote {
   border-left: 2px solid var(--gold);
   margin: 2em 0;
   padding: 0.75em 0 0.75em 1.5em;

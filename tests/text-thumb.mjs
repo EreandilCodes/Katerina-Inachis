@@ -280,12 +280,20 @@ try {
     }
   });
 
-  await check('Detail page keeps the full-size original cover (no thumbnail regression)', async () => {
+  await check('Detail page serves the full-quality WebP variant (not the multi-MB original)', async () => {
     await page.goto(`${BASE}/texty/${qaTextSlug}`, { waitUntil: 'load' });
     await waitAppContent(page);
     await page.waitForFunction(() => !!document.querySelector('.detail-title'), { timeout: 20000 });
     const src = await page.evaluate(() => document.querySelector('.detail-cover img')?.getAttribute('src') || '');
-    assert(src === imgUrl, `detail cover switched to ${src}`);
+    // The detail cover is above the fold and displays at ≤900px, so it requests
+    // the /img/gallery WebP variant at w=1600 (full detail; sources are ≤1536px).
+    const expected = `/img/gallery/${encodeURIComponent(imgUrl.replace('/uploads/gallery/', ''))}?w=1600`;
+    assert(src === expected, `detail cover does not use the WebP variant: ${src}`);
+    const resp = await fetch(BASE + src);
+    assert(resp.status === 200, `variant HTTP ${resp.status}`);
+    assert((resp.headers.get('content-type') || '').includes('image/webp'), 'variant not image/webp');
+    const vBytes = Buffer.from(await resp.arrayBuffer());
+    assert(vBytes.length < originalBytes.length, `variant ${vBytes.length} B not smaller than original ${originalBytes.length} B`);
   });
 } finally {
   await ctx.close();
