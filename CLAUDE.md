@@ -475,7 +475,16 @@ renders as `.card-body` (category, title, excerpt) → `.card-img` → `.card-me
 `renderBlogCard`, `renderProgrammingCard`, the friend-post card in
 `renderFriendPage` and the `/tag/<slug>` card in `renderTagPage`). This order is
 enforced by `tests/card-order.mjs`. The **detail** view keeps a different,
-fixed order: `Title → Perex → (Tags) → Image → Content`.
+fixed order: `Title → Perex → (Tags) → Image → Content`. The "Perex" here is
+BOTH the (admin-set, rarely used) `detail-excerpt` field AND the editor's
+"Perex" toolbar button output: a **leading `<blockquote>` in the content**,
+peeled off by `splitContentPerex()` and rendered as `.detail-perex` above the
+cover (`detailContentPerexHtml`/`renderDetailRest` in `public.js`). Mid-content
+blockquotes are real quotations and are never moved.
+
+Detail covers are served through the same `/img/gallery` WebP pipeline as
+listing cards (`detailCoverImgHtml`, `w=1600`, eager + `fetchpriority="high"`)
+— never the multi-MB `/uploads/gallery` original.
 
 1. ALL routes use `logger` — no console.log in backend
 2. ALL routes use `{ AuthMiddleware }` named import
