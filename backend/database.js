@@ -36,7 +36,34 @@ export const DEFAULT_PAGE_TITLES_EN = {
 export const DEFAULT_PAGE_SLUGS = Object.freeze(Object.keys(DEFAULT_PAGE_TITLES));
 
 // ── Mode detection ────────────────────────────────────────────────────────────
+// SQLite is the local/default provider. Production (and any deployment) must
+// opt into PostgreSQL EXPLICITLY: DB_PROVIDER=postgres + DATABASE_URL. There
+// is deliberately NO automatic fallback — a misconfigured production deploy
+// would otherwise silently boot a fresh, empty SQLite DB and "work" against
+// the wrong data. A production runtime (NODE_ENV=production or a Railway
+// production environment) without the PostgreSQL config fails fast instead.
 const isPostgres = process.env.DB_PROVIDER === 'postgres';
+const isProductionRuntime =
+  process.env.NODE_ENV === 'production' ||
+  (process.env.RAILWAY_ENVIRONMENT_NAME ?? '').toLowerCase() === 'production';
+
+if (isPostgres && !process.env.DATABASE_URL) {
+  console.error(
+    '❌ DB_PROVIDER=postgres but DATABASE_URL is missing. ' +
+    'Refusing to start with a wrong/empty database — set DATABASE_URL or fix DB_PROVIDER.'
+  );
+  process.exit(1);
+}
+if (!isPostgres && isProductionRuntime) {
+  console.error(
+    '❌ Running in production without DB_PROVIDER=postgres. ' +
+    'Production must run on PostgreSQL; a silent SQLite fallback would create an ' +
+    'empty database and lose access to production data. Set DB_PROVIDER=postgres ' +
+    'and DATABASE_URL. If you really need SQLite in production, that is a ' +
+    'deliberate architecture change — do not silence this guard.'
+  );
+  process.exit(1);
+}
 
 console.log(`🗄️  Database mode: ${isPostgres ? 'PostgreSQL' : 'SQLite'}`);
 
