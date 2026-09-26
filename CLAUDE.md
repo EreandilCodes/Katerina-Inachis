@@ -79,6 +79,18 @@ import AuthMiddleware from '../middleware/auth.js';
 
 ## Database Schema
 
+### Databases
+- **Local dev:** SQLite (`backend/inachis.db` / `SQLITE_PATH`).
+- **Production:** PostgreSQL (Railway service `Postgres`, db `railway`), switched 2026-09-26.
+  Data were migrated from `/data/inachis.db` (kept on the volume as a historical backup — do not delete).
+- Deploy never resets the DB: `initDatabase()` is idempotent and non-destructive
+  (`CREATE TABLE IF NOT EXISTS`, `ON CONFLICT DO NOTHING`, additive `ALTER TABLE`).
+- PG wrapper appends `RETURNING id` to INSERTs — except `INSERT INTO settings`
+  (PK is `key`, not `id`); the migration script upserts with
+  `ON CONFLICT (key)` for settings and `ON CONFLICT (id)` elsewhere, and resets
+  sequences to the `sqlite_sequence` high-water mark (AUTOINCREMENT ids are
+  never reused; `MAX(id)` can be lower after deletions).
+
 ### Tables
 - `users` — admin + friends (role: admin|friend|viewer)
 - `texts` — literary texts/essays
@@ -473,6 +485,10 @@ fixed order: `Title → Perex → (Tags) → Image → Content`.
 6. Gallery upload uses multer.memoryStorage() + sharp; files go to the
    persistent volume dir (see Gallery Upload Storage above)
 7. Port 3004
-8. DB file: `backend/inachis.db`
+8. DB: **local SQLite** (`backend/inachis.db` or `SQLITE_PATH`), **production PostgreSQL**
+   (`DB_PROVIDER=postgres` + `DATABASE_URL`; Railway service `Postgres`). No silent
+   SQLite fallback in production — `backend/database.js` fail-fast guard aborts
+   startup (exit 1) when a production runtime lacks the PostgreSQL config.
+   Startup log always prints `Database mode: PostgreSQL|SQLite`.
 9. `"type": "module"` in package.json
 10. `dataset.bound` guard on event listeners that run multiple times
