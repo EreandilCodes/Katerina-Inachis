@@ -18,8 +18,8 @@ import sqlite3 from 'sqlite3';
 import fs from 'fs';
 import { execSync } from 'child_process';
 
-const SQLITE_SRC = '/data/inachis.db';
-const SQLITE_COPY = '/tmp/migrate-inachis.db';
+const SQLITE_SRC = process.env.MIGRATION_SQLITE_SRC || '/data/inachis.db';
+const SQLITE_COPY = process.env.MIGRATION_SQLITE_COPY || '/tmp/migrate-inachis.db';
 const TABLES = [
   'users', 'categories', 'pages', 'settings', 'tags',
   'texts', 'artworks', 'jewelry', 'blog_posts', 'programming_posts',
@@ -108,48 +108,97 @@ async function main() {
   for (const t of ORDER) {
     const createSql = schemas[t];
     // Create if not exists: safe on a fresh DB and idempotent across re-runs.
-    await pool.query(createSql);
+    // (The schemas come from SQLite DDL, which has no IF NOT EXISTS — add it,
+    // otherwise a re-run crashes with 42P07 instead of upserting.)
+    await pool.query(
+      createSql.replace(/CREATE TABLE (?!IF NOT EXISTS)/i, 'CREATE TABLE IF NOT EXISTS ')
+    );
     console.log('created table', t);
 
-    // Columns (in table order) + which are NOT NULL for the EXCLUDED update.
+    // Columns (in table order).
     const cols = await srcAll(`PRAGMA table_info(${t})`);
     const colNames = cols.map((c) => c.name);
-    const idIdx = colNames.indexOf('id');
-    const insertCols = colNames; // include id explicitly
-    const updateSet = colNames
-      .filter((_, i) => i !== idIdx)
-      .map((c) => `${c}=EXCLUDED.${c}`)
-      .join(', ');
+    // `settings` has no `id` column — its conflict target and update set
+    // differ from every id-keyed table.
+    const isSettings = t === 'settings';
 
-    // gallery_folders: self-FK — roots (parent_id IS NULL) first, then children.
+    // Read the source rows in a deterministic order. gallery_folders has a
+    // self-FK — roots (parent_id IS NULL) first, then children.
     let rows;
     if (t === 'gallery_folders') {
       const roots = await srcAll(`SELECT * FROM gallery_folders WHERE parent_id IS NULL ORDER BY id`);
       const children = await srcAll(`SELECT * FROM gallery_folders WHERE parent_id IS NOT NULL ORDER BY id`);
       rows = [...roots, ...children];
+    } else if (t === 'settings') {
+      // `settings` is keyed by TEXT `key`, not `id` — order by key.
+      rows = await srcAll(`SELECT * FROM settings ORDER BY key`);
     } else {
       rows = await srcAll(`SELECT * FROM ${t} ORDER BY id`);
     }
 
+    // Sequence state must be fixed even when the table is empty (rows were
+    // deleted over time but sqlite_sequence still holds the high-water mark),
+    // so the empty-table bail-out below must not skip it.
     if (rows.length === 0) {
-      console.log(`  ${t}: 0 rows (skipping)`);
+      console.log(`  ${t}: 0 rows (skipping insert)`);
+      if (!isSettings) {
+        const seq = `${t}_id_seq`;
+        const seqRow = await srcGet(`SELECT seq FROM sqlite_sequence WHERE name = ?`, [t]).catch(() => null);
+        const maxRow = await srcGet(`SELECT MAX(id) AS m FROM ${t}`);
+        const target = Math.max(Number(seqRow?.seq ?? 0), Number(maxRow?.m ?? 0));
+        try {
+          if (target > 0) {
+            await pool.query(`SELECT setval('${seq}', $1, true)`, [target]);
+            console.log(`  ${t}: sequence set to ${target} (from sqlite_sequence)`);
+          } else {
+            await pool.query(`SELECT setval('${seq}', 1, false)`);
+          }
+        } catch (err) {
+          console.log(`  ${t}: sequence reset skipped (${err.message})`);
+        }
+      }
       continue;
     }
+    const conflictCol = isSettings ? 'key' : 'id';
+    const updateCols = isSettings
+      ? ['value', 'updated_at']
+      : colNames.filter((c) => c !== 'id');
+    const updateSet = updateCols.map((c) => `${c}=EXCLUDED.${c}`).join(', ');
 
-    const placeholders = '(' + colNames.map((_, i) => `$${i + 1}`).join(', ') + ')';
-    const sql = `INSERT INTO ${t} (${insertCols.join(', ')}) VALUES ${[rows].map(() => placeholders).join(', ')} ON CONFLICT (id) DO UPDATE SET ${updateSet}`;
+    // One parameter set per ROW (the original wrapped [rows] in an extra
+    // array, emitting a single VALUES group with $1..N placeholders for any
+    // row count while binding N*cols values — PostgreSQL rejects that).
+    const valuePlaceholders = rows
+      .map((_, rowIdx) => {
+        const base = rowIdx * colNames.length;
+        return '(' + colNames.map((_, c) => `$${base + c + 1}`).join(', ') + ')';
+      })
+      .join(', ');
+    const sql = `INSERT INTO ${t} (${colNames.join(', ')}) VALUES ${valuePlaceholders} ON CONFLICT (${conflictCol}) DO UPDATE SET ${updateSet}`;
     const values = rows.flatMap((r) => colNames.map((c) => r[c] ?? null));
 
     const start = Date.now();
     await pool.query(sql, values);
     console.log(`  ${t}: ${rows.length} rows inserted (${Date.now() - start}ms)`);
 
-    // Reset the sequence so the next auto-generated id = max(id)+1.
-    const maxRow = await srcGet(`SELECT MAX(id) AS m FROM ${t}`);
-    if (maxRow && maxRow.m != null) {
+    // Reset the sequence so the next auto-generated id continues after the
+    // migrated rows. AUTOINCREMENT never reuses ids, so sqlite_sequence holds
+    // the true high-water mark (MAX(id) can be lower after deletions) —
+    // prefer it, fall back to MAX(id), and setval to it. `settings` has no
+    // id/SERIAL — nothing to reset.
+    if (!isSettings) {
       const seq = `${t}_id_seq`;
+      const seqRow = await srcGet(`SELECT seq FROM sqlite_sequence WHERE name = ?`, [t]).catch(() => null);
+      const maxRow = await srcGet(`SELECT MAX(id) AS m FROM ${t}`);
+      const target = Math.max(Number(seqRow?.seq ?? 0), Number(maxRow?.m ?? 0));
       try {
-        await pool.query(`SELECT setval('${seq}', $1, true)`, [maxRow.m]);
+        if (target > 0) {
+          await pool.query(`SELECT setval('${seq}', $1, true)`, [target]);
+          console.log(`  ${t}: sequence set to ${target}`);
+        } else {
+          // Table never had rows — leave the fresh sequence at 1.
+          await pool.query(`SELECT setval('${seq}', 1, false)`);
+        }
       } catch (err) {
         // Sequence may not exist (e.g., if the table has no SERIAL).
         console.log(`  ${t}: sequence reset skipped (${err.message})`);
@@ -158,23 +207,44 @@ async function main() {
   }
 
   // Verify: compare counts with source.
+  // (PG numerics come back as strings — compare coerced Numbers, not raw values.)
   console.log('\n=== Verification (source vs migrated) ===');
   let ok = true;
   for (const t of ORDER) {
-    const srcCnt = (await srcGet(`SELECT COUNT(*) AS c FROM ${t}`)).c;
+    const srcCnt = Number((await srcGet(`SELECT COUNT(*) AS c FROM ${t}`)).c);
     const pgRow = await pgGet(`SELECT COUNT(*) AS c FROM ${t}`);
-    const pgCnt = pgRow.c;
+    const pgCnt = Number(pgRow?.c ?? 0);
     const match = srcCnt === pgCnt;
     if (!match) ok = false;
-    console.log(`${t}: sqlite=${srcCnt} postgres=${pgCnt} ${match ? '✅' : '❌'}`);
+    console.log(`${t}: sqlite=${srcCnt} postgres=${pgCnt} ${match ? 'OK' : 'MISMATCH'}`);
   }
   // Also verify the sqlite_sequence values match (AUTOINCREMENT tracking).
-  const srcSeq = await srcAll(`SELECT * FROM sqlite_sequence ORDER BY name`);
+  // SQLite copies created with `cat` keep their sqlite_sequence values, but
+  // some builds report them differently — treat "undefined/0" source entries
+  // as informational only and rely on the count comparison above for verdict.
+  let srcSeq = [];
+  try {
+    // The column is `seq`, not `value` (SELECT * is unreliable on sqlite_sequence).
+    srcSeq = await srcAll(`SELECT name, seq FROM sqlite_sequence ORDER BY name`);
+  } catch {
+    console.log('\nsqlite_sequence not available in the source copy (no AUTOINCREMENT rows recorded)');
+  }
   if (srcSeq.length) {
-    console.log('\nsqlite_sequence:');
+    console.log('\nsqlite_sequence (last_value reports the last FETCHED value, not setval — informational):');
     for (const s of srcSeq) {
-      const pgSeqRow = await pgGet(`SELECT last_value FROM ${s.name}_id_seq`);
-      console.log(`  ${s.name}: sqlite=${s.value} postgres_last=${pgSeqRow?.last_value} ${Number(pgSeqRow?.last_value) >= Number(s.value) ? '✅' : '⚠️'}`);
+      const seq = `${s.name}_id_seq`;
+      const state = await pgGet(
+        `SELECT last_value, is_called FROM ${seq}`
+      ).catch(() => null);
+      const srcVal = Number(s.seq ?? 0);
+      if (!state) { console.log(`  ${s.name}: no sequence`); continue; }
+      // PG semantics: is_called=false → next nextval() yields last_value (fresh),
+      // is_called=true → next nextval() yields last_value+1. Compute the true
+      // next id and require next > source seq (ids never reused).
+      const next = state.is_called ? Number(state.last_value) + 1 : Number(state.last_value);
+      const fine = srcVal === 0 ? true : next > srcVal;
+      if (!fine) ok = false;
+      console.log(`  ${s.name}: sqlite_seq=${s.seq} next_pg_id=${next} ${fine ? 'OK' : 'BEHIND'}`);
     }
   }
 

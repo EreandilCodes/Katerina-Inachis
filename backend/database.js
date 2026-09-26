@@ -57,13 +57,21 @@ async function createPgDb() {
     return sql.replace(/\?/g, () => `$${++index}`);
   }
 
+  // Rows the INSERT...RETURNING trick may NOT be applied to: tables whose
+  // primary key is not `id` (e.g. `settings`, keyed by `key`). Appending
+  // "RETURNING id" there makes PostgreSQL fail with `column "id" does not
+  // exist`, breaking initDatabase()'s settings seed and the admin settings
+  // update route. Callers of those statements use `changes`, not
+  // `lastInsertRowid`, so skipping RETURNING is behavior-preserving.
+  const NO_RETURNING_ID = /\bINSERT\s+INTO\s+settings\b/i;
+
   return {
     _pool: pool,
     exec: async (sql) => { await pool.query(sql); },
     prepare: (sql) => {
       const isInsert = /^\s*INSERT/i.test(sql);
       const pgSql = convertPlaceholders(sql);
-      const pgSqlRun = isInsert && !/RETURNING/i.test(sql)
+      const pgSqlRun = isInsert && !/RETURNING/i.test(sql) && !NO_RETURNING_ID.test(sql)
         ? pgSql.replace(/;?\s*$/, '') + ' RETURNING id'
         : pgSql;
 
