@@ -154,3 +154,47 @@
   text-align: center;
   line-height: 1.5;
 }
+
+/* ── YouTube editing preview (editor only, not saved) ──────
+   In the contenteditable a live YouTube iframe swallows clicks/keyboard,
+   Enter around it misbehaves and the 16:9 player reserves a huge area.
+   The editor therefore renders a compact, non-editable preview; the real
+   embed markup is kept in a data attribute and restored on save. */
+.rte-yt-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 480px;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-alt);
+  cursor: default;
+}
+
+.rte-yt-preview .rte-yt-badge {
+  flex-shrink: 0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  background: #cc0000;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.rte-yt-preview .rte-yt-thumb {
+  height: 54px;
+  border-radius: 3px;
+}
+
+.rte-yt-preview .rte-yt-note {
+  font-size: 0.78rem;
+  color: var(--ink-dim, #666);
+  line-height: 1.4;
+}
+
+.rte-yt-preview.rte-yt-selected {
+  outline: 2px solid var(--gold, #b08d3e);
+}

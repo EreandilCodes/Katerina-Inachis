@@ -110,8 +110,11 @@ class RichTextEditor {
     if (mode === 'visual') {
       // HTML → Visual: push source value into contenteditable
       const html = this.source.value;
-      this.content.innerHTML = html;
       this.textarea.value = html;
+      // Live YouTube iframes make the contenteditable hard to edit (the iframe
+      // swallows clicks/keyboard, Enter around it misbehaves, and the player
+      // reserves a big empty area) — render lightweight previews instead.
+      this.content.innerHTML = this._previewsForEditing(html);
 
       this.tabVisual.classList.add('active');
       this.tabHTML.classList.remove('active');
@@ -120,7 +123,7 @@ class RichTextEditor {
       this.source.style.display = 'none';
     } else {
       // Visual → HTML: read from contenteditable into source
-      const html = this._normalizeYtCaptions(this.content.innerHTML);
+      const html = this._normalizeYtCaptions(this._restoreEmbeds(this.content.innerHTML));
       // Clean up browser-generated empty content
       const cleaned = (html === '<br>' || html === '<br/>') ? '' : html;
       this.source.value = cleaned;
@@ -169,10 +172,102 @@ class RichTextEditor {
     // bare .yt-embed markup is kept so older stored content stays consistent.
     const trimmed = caption && caption.trim();
     const html = trimmed
-      ? '<figure class="yt-figure">' + embed + '<figcaption class="yt-caption">' + this._escapeHtml(trimmed) + '</figcaption></figure><p><br></p>'
-      : embed + '<p><br></p>';
+      ? '<figure class="yt-figure">' + embed + '<figcaption class="yt-caption">' + this._escapeHtml(trimmed) + '</figcaption></figure>'
+      : embed;
 
-    document.execCommand('insertHTML', false, html);
+    // Insert the embed (stored markup is unchanged) and then an empty paragraph.
+    // execCommand('insertHTML') would leave the caret inside/next to the embed
+    // div, where Enter does nothing and the author gets "stuck" — so the caret
+    // is moved into that paragraph explicitly: the author can immediately keep
+    // writing and formatting below the video.
+    document.execCommand('insertHTML', false, html + '<p><br></p>');
+    // Swap the freshly inserted live iframe for the editing preview right away,
+    // so the embed never behaves like a live player while editing.
+    this.content.innerHTML = this._previewsForEditing(this.content.innerHTML);
+    this._placeCaretAfterYouTube();
+  }
+
+  // Put the caret into the first empty paragraph right after the freshly
+  // inserted YouTube embed, so the author can keep typing immediately.
+  _placeCaretAfterYouTube() {
+    const editable = this.content;
+    const sel = window.getSelection();
+    const range = document.createRange();
+    const yt = editable.querySelector('.rte-yt-preview:last-of-type') ||
+               editable.querySelector('.yt-embed:last-of-type');
+    // Walk forward from the embed: skip the caption inside a figure wrapper
+    // and land in the paragraph AFTER the whole video block (or append one).
+    if (yt) {
+      const wrapper = yt.closest('figure') || yt;
+      let node = wrapper.nextElementSibling;
+      let p = null;
+      while (node && node.tagName !== 'P') node = node.nextElementSibling;
+      if (!node) {
+        // No paragraph after the video yet — create one and keep the caret in it.
+        p = document.createElement('p');
+        p.appendChild(document.createElement('br'));
+        wrapper.parentNode.insertBefore(p, wrapper.nextSibling);
+      } else {
+        p = node;
+      }
+      range.setStart(p, 0);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return;
+    }
+    // Fallback: caret at the very end of the editable area.
+    range.selectNodeContents(editable);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  // ── YouTube editing previews ───────────────────────────────
+
+  // Replace live YouTube embeds with editable previews inside the
+  // contenteditable. The stored markup (div.yt-embed > iframe, optionally in
+  // figure.yt-figure) is preserved exactly — the preview carries the original
+  // iframe in a data attribute and is swapped back on save/tab switch.
+  _previewsForEditing(html) {
+    if (typeof html !== 'string' || html.indexOf('yt-embed') === -1) return html;
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    container.querySelectorAll('.yt-embed iframe').forEach((iframe) => {
+      const embed = iframe.closest('.yt-embed');
+      const videoId = this._parseYouTubeId(iframe.getAttribute('src') || '');
+      const preview = document.createElement('div');
+      preview.className = 'rte-yt-preview';
+      preview.setAttribute('contenteditable', 'false');
+      preview.dataset.ytEmbed = embed.outerHTML;
+      preview.innerHTML =
+        '<span class="rte-yt-badge">YouTube</span>' +
+        (videoId
+          ? '<img class="rte-yt-thumb" src="https://i.ytimg.com/vi/' + videoId + '/hqdefault.jpg" alt="">'
+          : '') +
+        '<span class="rte-yt-note">Video — text upravte vedle náhledu</span>';
+      embed.replaceWith(preview);
+    });
+
+    return container.innerHTML;
+  }
+
+  // Transparently swap editing previews back to the real embed markup.
+  _restoreEmbeds(html) {
+    if (typeof html !== 'string' || html.indexOf('rte-yt-preview') === -1) return html;
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    container.querySelectorAll('.rte-yt-preview').forEach((preview) => {
+      const embed = preview.dataset.ytEmbed;
+      if (embed) preview.replaceWith(...Array.from(new DOMParser().parseFromString(embed, 'text/html').body.childNodes));
+      else preview.remove(); // corrupted preview — drop it instead of saving junk
+    });
+
+    return container.innerHTML;
   }
 
   // ── YouTube caption helpers ────────────────────────────────
@@ -228,7 +323,7 @@ class RichTextEditor {
   // ── Sync & Public API ──────────────────────────────────────
 
   _syncToTextarea() {
-    const html = this.content.innerHTML;
+    const html = this._restoreEmbeds(this.content.innerHTML);
     this.textarea.value = html;
     // Keep source in sync so switching to HTML tab always shows current content
     this.source.value = html;
@@ -238,13 +333,13 @@ class RichTextEditor {
     if (this.mode === 'html') {
       return this._normalizeYtCaptions(this.source.value);
     }
-    return this._normalizeYtCaptions(this.content.innerHTML);
+    return this._normalizeYtCaptions(this._restoreEmbeds(this.content.innerHTML));
   }
 
   setValue(html) {
-    this.content.innerHTML = html;
-    this.source.value = html;
-    this.textarea.value = html;
+    this.content.innerHTML = this._previewsForEditing(html || '');
+    this.source.value = html || '';
+    this.textarea.value = html || '';
   }
 }
 
