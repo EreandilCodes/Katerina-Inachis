@@ -46,7 +46,11 @@
 }
 
 html {
-  font-size: 15px;
+  /* Fluid root: the admin is a desktop-first tool, so it grows with the
+     display instead of pinning 15px. 15px up to ~1450px, 16.3px at 1920,
+     18.3px at 2560, capped at 19px so the 240px sidebar and tables stay
+     comfortable on ultrawide. */
+  font-size: clamp(15px, 0.3125vw + 10.3px, 19px);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -102,7 +106,7 @@ ul, ol { list-style: none; }
 
 .sidebar-logo .sidebar-role {
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.35);
@@ -119,7 +123,7 @@ ul, ol { list-style: none; }
   margin-bottom: 0.25rem;
   padding: 0 1.25rem;
   font-family: var(--font-body);
-  font-size: 0.62rem;
+  font-size: 0.78rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.25);
@@ -131,7 +135,7 @@ ul, ol { list-style: none; }
   gap: 0.75rem;
   padding: 0.65rem 1.5rem;
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   font-weight: 400;
   letter-spacing: 0.06em;
   color: rgba(255,255,255,0.65);
@@ -152,7 +156,9 @@ ul, ol { list-style: none; }
 
 .sidebar-nav .nav-icon {
   font-size: 0.9rem;
-  width: 18px;
+  /* rem, not px: the box must scale with the fluid root, otherwise the wider
+     multi-glyph icons (e.g. "⟨/⟩") spill past it once the root grows. */
+  width: 1.25rem;
   text-align: center;
   opacity: 0.7;
   flex-shrink: 0;
@@ -239,7 +245,7 @@ ul, ol { list-style: none; }
   align-items: center;
   gap: 0.4rem;
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   padding: 0.5rem 1.1rem;
@@ -283,7 +289,7 @@ ul, ol { list-style: none; }
 }
 
 .btn-admin--sm {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   padding: 0.3rem 0.7rem;
 }
 
@@ -292,7 +298,7 @@ ul, ol { list-style: none; }
   align-items: center;
   gap: 0.4rem;
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   letter-spacing: 0.06em;
   color: rgba(255,255,255,0.5);
   padding: 0.45rem 0.9rem;
@@ -325,7 +331,7 @@ ul, ol { list-style: none; }
 
 .admin-table th {
   font-family: var(--font-body);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -338,7 +344,7 @@ ul, ol { list-style: none; }
 
 .admin-table td {
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   color: var(--ink-mid);
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
@@ -374,7 +380,7 @@ ul, ol { list-style: none; }
 
 .admin-table .category-group-header {
   font-family: var(--font-body);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -387,12 +393,12 @@ ul, ol { list-style: none; }
   letter-spacing: 0;
   text-transform: none;
   color: var(--ink-dim);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
 }
 
 .admin-table .category-slug {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--ink-mid);
   background: var(--bg-alt);
   border: 1px solid var(--border);
@@ -412,7 +418,7 @@ ul, ol { list-style: none; }
 .badge {
   display: inline-block;
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   padding: 2px 8px;
@@ -567,7 +573,7 @@ ul, ol { list-style: none; }
 .form-label {
   display: block;
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   color: var(--ink-mid);
@@ -584,7 +590,7 @@ ul, ol { list-style: none; }
 .form-textarea {
   width: 100%;
   font-family: var(--font-body);
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 400;
   color: var(--ink);
   background: var(--bg);
@@ -639,7 +645,7 @@ ul, ol { list-style: none; }
 
 .form-check label {
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--ink-mid);
   cursor: pointer;
   user-select: none;
@@ -662,7 +668,7 @@ ul, ol { list-style: none; }
 
 .tag-chips__hint {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--ink-dim);
   padding: 0.35rem 0;
 }
@@ -676,7 +682,7 @@ ul, ol { list-style: none; }
   border: 1px solid rgba(124, 100, 143, 0.25);
   border-radius: 999px;
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--violet);
 }
 
@@ -717,7 +723,7 @@ ul, ol { list-style: none; }
   box-shadow: 0 8px 30px rgba(18,14,25,0.18);
   border-left: 3px solid var(--success);
   font-family: var(--font-body);
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: var(--ink);
   transform: translateX(120%);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -757,7 +763,7 @@ ul, ol { list-style: none; }
 
 .gallery-sidebar__header h4 {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -774,7 +780,7 @@ ul, ol { list-style: none; }
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--ink-mid);
   cursor: pointer;
   transition: background var(--transition);
@@ -800,7 +806,7 @@ ul, ol { list-style: none; }
 }
 
 .folder-item .folder-icon {
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   opacity: 0.6;
   flex-shrink: 0;
 }
@@ -842,7 +848,7 @@ ul, ol { list-style: none; }
 }
 
 .gallery-search .form-input {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   padding: 0.4rem 0.75rem;
 }
 
@@ -892,7 +898,7 @@ ul, ol { list-style: none; }
   align-items: center;
   justify-content: center;
   color: var(--white);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
 }
 
 .gallery-picker-item.selected .pick-check {
@@ -950,7 +956,7 @@ ul, ol { list-style: none; }
 
 .stat-card__label {
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -986,13 +992,13 @@ ul, ol { list-style: none; }
 
 .inquiry-card__email {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   color: var(--ink-dim);
 }
 
 .inquiry-card__subject {
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--violet-mid);
   margin-bottom: 0.5rem;
@@ -1000,7 +1006,7 @@ ul, ol { list-style: none; }
 
 .inquiry-card__message {
   font-family: var(--font-body);
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 300;
   color: var(--ink-mid);
   line-height: 1.65;
@@ -1019,7 +1025,7 @@ ul, ol { list-style: none; }
 
 .inquiry-date {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--ink-dim);
 }
 

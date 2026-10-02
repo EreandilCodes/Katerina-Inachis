@@ -486,6 +486,17 @@ Detail covers are served through the same `/img/gallery` WebP pipeline as
 listing cards (`detailCoverImgHtml`, `w=1600`, eager + `fetchpriority="high"`)
 — never the multi-MB `/uploads/gallery` original.
 
+**Type scale rule (do not regress):** the root font-size is **fluid**, not a fixed
+px value — `clamp(16px, 0.3125vw + 12px, 20px)` in `public.css`/`login.html` and
+`clamp(15px, 0.3125vw + 10.3px, 19px)` in `admin.css`. Every `rem` size is
+relative to it, so the whole scale grows on desktop while staying 16px (public) /
+15px (admin) on phones. Consequence for new CSS: **do not add sub-0.8rem
+type** (`0.62rem`/`0.7rem` used to render at 9-11px and were illegible on desktop).
+The smallest tier is 0.78rem (admin) / 0.8rem (public). Anything paired with
+`rem` text that must stay proportional should use `rem`, not a fixed `px` box —
+see `.sidebar-nav .nav-icon { width: 1.25rem }` in `admin.css`, which was `18px`
+and let the multi-glyph `⟨/⟩` icon spill out once the root grew.
+
 1. ALL routes use `logger` — no console.log in backend
 2. ALL routes use `{ AuthMiddleware }` named import
 3. `generateSlug()` in every route that needs it

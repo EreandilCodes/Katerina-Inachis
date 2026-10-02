@@ -30,7 +30,13 @@
   /* Typography */
   --font-display: 'EB Garamond', Georgia, serif;
   --font-body:    'Inter', -apple-system, system-ui, sans-serif;
-  --font-size-base: 16px;
+
+  /* Fluid root size. Every rem-based size in this file is relative to it, so
+     the whole type scale grows with the display instead of staying at 16px
+     inside an ever-wider layout. 16px on phones/tablets (clamped from below),
+     18px at 1920, 20px from ~2560 up. Cap 20px so 4K/ultrawide stays sane. */
+  --font-size-base: clamp(16px, 0.3125vw + 12px, 20px);
+
   --lh:           1.65;
   --lh-tight:     1.2;
 
@@ -151,7 +157,7 @@ button {
 
 .nav-menu a {
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 400;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -207,7 +213,7 @@ button {
   display: block !important;
   padding: 0.55rem 1.25rem !important;
   color: var(--ink-mid) !important;
-  font-size: 0.72rem !important;
+  font-size: 0.85rem !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase;
   border-bottom: 1px solid var(--border) !important;
@@ -227,7 +233,7 @@ button {
 /* Mobile nav sub-items */
 .nav-mobile-sub {
   padding-left: 2rem !important;
-  font-size: 0.78rem !important;
+  font-size: 0.85rem !important;
   color: var(--ink-dim) !important;
   border-bottom-color: transparent !important;
 }
@@ -235,7 +241,7 @@ button {
 /* Language toggle */
 .lang-toggle {
   font-family: var(--font-body);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -301,7 +307,7 @@ button {
 
 .nav-mobile a {
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-mid);
@@ -392,7 +398,7 @@ button {
   gap: 0.5rem;
   color: rgba(255,255,255,0.5);
   font-family: var(--font-body);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   animation: heroScrollBounce 2s ease-in-out infinite;
@@ -453,7 +459,7 @@ button {
 .section-subtitle {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   color: var(--ink-dim);
   letter-spacing: 0.03em;
 }
@@ -461,7 +467,7 @@ button {
 .page-intro {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: clamp(0.95rem, 2vw, 1.05rem);
+  font-size: clamp(1.05rem, 2vw, 1.15rem);
   line-height: 1.7;
   color: var(--ink-mid);
   letter-spacing: 0.02em;
@@ -553,7 +559,7 @@ button {
 .card-category {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   letter-spacing: 0.1em;
   color: var(--gold);
   text-transform: none;
@@ -574,7 +580,7 @@ button {
 .card-excerpt {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   color: var(--ink-mid);
   line-height: 1.6;
   display: -webkit-box;
@@ -585,7 +591,7 @@ button {
 
 .card-meta {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--ink-dim);
   letter-spacing: 0.04em;
   padding: 0.9rem 1.5rem 1.5rem;
@@ -664,7 +670,7 @@ button {
 .friend-bio {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   color: var(--ink-dim);
   line-height: 1.5;
   display: -webkit-box;
@@ -694,7 +700,7 @@ button {
 .detail-category {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   letter-spacing: 0.1em;
   color: var(--gold);
   margin-bottom: 0.75rem;
@@ -713,7 +719,7 @@ button {
 
 .detail-meta {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   letter-spacing: 0.08em;
   color: var(--ink-dim);
   text-transform: uppercase;
@@ -777,7 +783,7 @@ button {
   border: 1px solid var(--line, rgba(0,0,0,0.12));
   border-radius: 999px;
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   letter-spacing: 0.04em;
   color: var(--ink-dim);
   background: var(--bg-section, #fff);
@@ -795,7 +801,7 @@ button {
   margin: 0 auto;
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   line-height: var(--lh);
   color: var(--ink-mid);
 }
@@ -905,7 +911,7 @@ button {
 .gallery-item__title {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   color: var(--white);
   letter-spacing: 0.04em;
   opacity: 0;
@@ -963,7 +969,7 @@ button {
 .jewelry-item__collection {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: var(--gold);
   letter-spacing: 0.1em;
   margin-bottom: 0.4rem;
@@ -982,14 +988,14 @@ button {
 .jewelry-item__materials {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   color: var(--ink-dim);
 }
 
 .jewelry-badge {
   display: inline-block;
   font-family: var(--font-body);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -1067,7 +1073,7 @@ button {
 .footer-brand p {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   line-height: 1.7;
   color: rgba(255,255,255,0.55);
   max-width: 280px;
@@ -1075,7 +1081,7 @@ button {
 
 .footer-nav h4 {
   font-family: var(--font-body);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--gold);
@@ -1090,7 +1096,7 @@ button {
 
 .footer-nav a {
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 300;
   color: rgba(255,255,255,0.6);
   transition: color var(--transition);
@@ -1115,7 +1121,7 @@ button {
   border: 1px solid rgba(255,255,255,0.15);
   border-radius: var(--radius);
   color: rgba(255,255,255,0.5);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   transition: border-color var(--transition), color var(--transition);
 }
 
@@ -1134,7 +1140,7 @@ button {
 
 .footer-copy {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 300;
   color: rgba(255,255,255,0.35);
   letter-spacing: 0.04em;
@@ -1146,7 +1152,7 @@ button {
   align-items: center;
   gap: 0.5rem;
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   font-weight: 400;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1192,7 +1198,7 @@ button {
 .tag {
   display: inline-block;
   font-family: var(--font-body);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -1204,7 +1210,7 @@ button {
 .category-label {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   letter-spacing: 0.1em;
   color: var(--gold);
 }
@@ -1217,7 +1223,7 @@ button {
 .form-label {
   display: block;
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-mid);
@@ -1228,7 +1234,7 @@ button {
 .form-textarea {
   width: 100%;
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 300;
   color: var(--ink);
   background: var(--white);
@@ -1258,7 +1264,7 @@ button {
   color: var(--success);
   border-radius: var(--radius);
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .form-error {
@@ -1267,7 +1273,7 @@ button {
   color: var(--error);
   border-radius: var(--radius);
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 /* Contact section */
@@ -1303,7 +1309,7 @@ button {
 
 .empty-state p {
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 /* ── 20. Image gallery lightbox ────────────────────────────── */
@@ -1350,7 +1356,7 @@ button {
   align-items: center;
   gap: 0.5rem;
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-dim);
@@ -1441,7 +1447,7 @@ button {
 .yt-figure .yt-embed { margin: 0; }
 .yt-caption {
   margin-top: 0.75rem;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-style: italic;
   color: var(--ink-mid);
   text-align: center;

@@ -26,7 +26,9 @@
       --font-body:   'Inter', system-ui, sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { font-size: 16px; }
+    /* Fluid root so the form scales up on desktop (18px @1920, 20px @2560),
+       stays 16px on phones. See css/public.css for the same scale. */
+    html { font-size: clamp(16px, 0.3125vw + 12px, 20px); }
     body {
       font-family: var(--font-body);
       background: var(--bg-alt);
@@ -61,7 +63,7 @@
     .login-role {
       text-align: center;
       font-family: var(--font-body);
-      font-size: 0.72rem;
+      font-size: 0.85rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--ink-dim);
@@ -78,7 +80,7 @@
     .form-label {
       display: block;
       font-family: var(--font-body);
-      font-size: 0.75rem;
+      font-size: 0.88rem;
       font-weight: 500;
       letter-spacing: 0.06em;
       color: var(--ink-mid);
@@ -87,7 +89,7 @@
     .form-input {
       width: 100%;
       font-family: var(--font-body);
-      font-size: 0.9rem;
+      font-size: 1rem;
       font-weight: 300;
       color: var(--ink);
       background: var(--bg);
@@ -106,7 +108,7 @@
     .btn-login {
       width: 100%;
       font-family: var(--font-body);
-      font-size: 0.82rem;
+      font-size: 0.92rem;
       font-weight: 500;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -125,7 +127,7 @@
       background: var(--error-bg);
       color: var(--error);
       font-family: var(--font-body);
-      font-size: 0.82rem;
+      font-size: 0.92rem;
       padding: 0.75rem 1rem;
       border-radius: 1px;
       margin-top: 1rem;
@@ -137,7 +139,7 @@
     }
     .login-footer a {
       font-family: var(--font-body);
-      font-size: 0.78rem;
+      font-size: 0.88rem;
       color: var(--ink-dim);
       text-decoration: none;
       letter-spacing: 0.04em;
