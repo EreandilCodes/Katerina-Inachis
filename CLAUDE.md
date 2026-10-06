@@ -303,9 +303,13 @@ tiles pass no index and stay lazy).
   to `immutable`/long `max-age` caches.
 - Width clamps to `[64, 1600]` (default 800), `withoutEnlargement: true`,
   filename must match the safe-file regex (else 400), missing source is 404.
-- Detail pages (`.detail-cover`) keep the **original** cover URL — only the
-  listing-card grid is thumbnailised. `artwork`/`jewelry` grid renderers
-  (`renderArtworkGalleryItem`/`renderJewelryItem`) are intentionally untouched.
+- `cardImgHtml` (`w=800`), `detailCoverImgHtml` (`w=1600`), the **Galerie
+  grid** (`renderArtworkGalleryItem`, `w=800`) and every **carousel slide**
+  (artwork / jewelry / post details, `w=1600`) rewrite their `src` through
+  `thumbUrl()`, so no content picture serves the multi-MB original any more.
+  `renderJewelryItem` (Kresba a malba tiles) is the one renderer still
+  pointing at the original URL — its box is 1:1 and at most ~400px wide, so
+  `thumbUrl(src, 800)` is the safe value if it ever gets thumbnailised too.
 - Tests: `tests/text-thumb.mjs` (`npm run test:textthumb`).
 
 ## Texty subcategories (data-driven)
@@ -513,6 +517,32 @@ picture are meant to be the same width. Do not narrow one without the other.
 paragraph size comes from `body { font-size: 1.1rem }` (bare `<p>`s with no
 class of their own), and article body copy is `.text-content { font-size:
 1.35rem }` — dropping either re-introduces the "too small to read" report.
+
+**Gallery image rule (do not regress):** a picture that *is* the content is
+shown **whole**, never cropped. That covers the Galerie grid
+(`.gallery-grid`/`.gallery-item` — the old `aspect-ratio: 4/3` +
+`object-fit: cover` boxes were removed), the Galerie detail cover
+(`.detail-page--gallery .detail-cover`, modifier class set in
+`renderArtworkDetail`), the multi-image carousel (`.carousel-slide img {
+object-fit: contain }` — flex slides all stretch to the tallest image, so
+`cover` cropped every shorter one) and the lightbox (already `contain`). Rows
+stay top-aligned (`.gallery-grid { align-items: start }`, `.scroll-row >
+.gallery-item { align-self: flex-start }`) so an uncropped tile never grows a
+strip of background under itself, and a tile is exactly as tall as its own
+picture. Cropping stays **opt-in, per placement**: the ratio boxes that are
+left (`.card-img` 3:2, `.jewelry-item__img` 1:1, `.detail-cover` 4/3 outside
+the Galerie) are thumbnails, and that is where cropping is allowed. Whole must
+not mean heavy — the Galerie tiles load through `thumbUrl(..., 800)`.
+
+**Kresba a malba typeface rule:** the section is set in the display serif
+(`var(--font-display)` = EB Garamond), the same face the stories use for their
+titles, perex and headings. `renderJewelryDetail` sets the modifier class
+`.detail-page--drawing`, whose `.text-content` switches to that face, and
+`.jewelry-item__materials` uses it too, so the tile and its detail page match.
+Only the *typeface* changes — size, line-height and the guard below all still
+apply. Do **not** widen this to `.text-content` in general: story bodies stay
+on `--font-body` (or on the face they were pasted in), which is a separate,
+deliberate decision.
 
 **Pasted-content guard (do not remove):** stories are pasted into the editor
 from Word/Google Docs, which wraps every paragraph in inline `font-size`

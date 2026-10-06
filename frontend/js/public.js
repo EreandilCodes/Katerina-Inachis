@@ -453,7 +453,7 @@ function renderTextCard(t, index) {
 function renderArtworkGalleryItem(a) {
   return `
     <div class="gallery-item" onclick="app.navigate('/umeni/${esc(a.slug)}')">
-      ${a.cover_image ? `<img src="${esc(a.cover_image)}" alt="${esc(a.title)}" loading="lazy">` : '<div style="width:100%;height:100%;background:var(--bg-section)"></div>'}
+      ${a.cover_image ? `<img src="${esc(thumbUrl(a.cover_image, 800))}" alt="${esc(a.title)}" loading="lazy">` : '<div style="width:100%;aspect-ratio:4/3;background:var(--bg-section)"></div>'}
       <div class="gallery-item__overlay">
         <div>
           ${a.collection ? `<div style="font-family:var(--font-display);font-style:italic;font-size:0.72rem;color:var(--gold);letter-spacing:0.1em">${esc(a.collection)}</div>` : ''}
@@ -716,7 +716,7 @@ async function renderArtworkDetail(slug) {
     try { images = JSON.parse(a.images_json || '[]'); } catch {}
 
     app.setContent(`
-      <div class="detail-page">
+      <div class="detail-page detail-page--gallery">
         <div class="detail-page__inner">
           <a href="/umeni" class="back-link">${i('back.art')}</a>
           <div class="detail-header">
@@ -731,7 +731,7 @@ async function renderArtworkDetail(slug) {
           ${images.length > 1 ? `
           <div class="carousel" style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
             <div class="carousel-track">
-              ${images.map(img => `<div class="carousel-slide"><img src="${esc(img)}" alt="${esc(a.title)}" loading="lazy"></div>`).join('')}
+              ${images.map(img => `<div class="carousel-slide"><img src="${esc(thumbUrl(img, 1600))}" alt="${esc(a.title)}" loading="lazy"></div>`).join('')}
             </div>
           </div>` : ''}
         </div>
@@ -782,7 +782,7 @@ async function renderJewelryDetail(slug) {
     try { images = JSON.parse(j.images_json || '[]'); } catch {}
 
     app.setContent(`
-      <div class="detail-page">
+      <div class="detail-page detail-page--drawing">
         <div class="detail-page__inner">
           <a href="/kresba" class="back-link">${i('back.drawing')}</a>
           <div class="detail-header">
@@ -803,7 +803,7 @@ async function renderJewelryDetail(slug) {
           ${images.length > 1 ? `
           <div class="carousel" style="margin-top:3rem;max-width:600px;margin-left:auto;margin-right:auto">
             <div class="carousel-track">
-              ${images.map(img => `<div class="carousel-slide"><img src="${esc(img)}" alt="${esc(j.title)}" loading="lazy"></div>`).join('')}
+              ${images.map(img => `<div class="carousel-slide"><img src="${esc(thumbUrl(img, 1600))}" alt="${esc(j.title)}" loading="lazy"></div>`).join('')}
             </div>
           </div>` : ''}
         </div>
@@ -1022,7 +1022,7 @@ async function renderFriendPost(friendSlug, postSlug) {
           ${images.length > 1 ? `
           <div class="carousel" style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
             <div class="carousel-track">
-              ${images.map(img => `<div class="carousel-slide"><img src="${esc(img)}" alt="${esc(post.title)}" loading="lazy"></div>`).join('')}
+              ${images.map(img => `<div class="carousel-slide"><img src="${esc(thumbUrl(img, 1600))}" alt="${esc(post.title)}" loading="lazy"></div>`).join('')}
             </div>
           </div>` : images.length === 1 ? `
           <div style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">

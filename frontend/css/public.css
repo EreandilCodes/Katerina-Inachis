@@ -755,6 +755,19 @@ button {
   object-fit: cover;
 }
 
+/* The Gallery's own detail page renders the artwork's cover WHOLE — the same
+   "never crop the artwork" rule as the gallery grid. Every other detail page
+   (texts, blog, programming, friends) keeps its 4/3 cover box: that is the
+   "cropping happens where an image is placed" case. */
+.detail-page--gallery .detail-cover {
+  aspect-ratio: auto;
+}
+
+.detail-page--gallery .detail-cover img {
+  height: auto;
+  object-fit: contain;
+}
+
 /* Perex (excerpt) sits between the title and the cover image, so the public
    post layout reads Title → Perex → Image → Main content on every viewport. */
 .detail-excerpt {
@@ -824,6 +837,14 @@ button {
   font-size: 1.35rem;
   line-height: var(--lh);
   color: var(--ink-mid);
+}
+
+/* Kresba a malba: this section's own words are set in the display serif, the
+   same face the stories wear for their titles, perex and headings. Only the
+   typeface is overridden — size, line-height and the pasted-content guard all
+   keep applying, so the text stays exactly as readable as a story body. */
+.detail-page--drawing .text-content {
+  font-family: var(--font-display);
 }
 
 .text-content p {
@@ -932,21 +953,35 @@ button {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1rem;
+  /* Every tile is exactly as tall as its own picture (see below), so rows are
+     topped instead of stretched — otherwise a shorter image would grow a strip
+     of background under it inside a stretched cell. */
+  align-items: start;
 }
 
+/* Gallery images are the artwork itself: they are shown WHOLE, at their own
+   proportions — never forced into a fixed crop box. Cropping stays an explicit
+   choice made when an image is placed somewhere else (the listing-card boxes
+   such as `.card-img` keep theirs); the lightbox already shows the full
+   picture too. */
 .gallery-item {
   position: relative;
-  aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--bg-section);
   cursor: pointer;
 }
 
+/* The homepage scroll row stretches its children to the tallest tile, so the
+   gallery tile opts out and keeps its natural height there too. */
+.scroll-row > .gallery-item {
+  align-self: flex-start;
+}
+
 .gallery-item img {
+  display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
   transition: transform 0.4s ease;
 }
 
@@ -1046,7 +1081,9 @@ button {
 }
 
 .jewelry-item__materials {
-  font-family: var(--font-body);
+  /* Kresba a malba is set in the display serif, the same face the stories use
+     for their titles and perex — the tile and its detail page match. */
+  font-family: var(--font-display);
   font-weight: 300;
   font-size: 1.05rem;
   color: var(--ink-dim);
@@ -1518,7 +1555,10 @@ button {
 .carousel { position: relative; overflow: hidden; border-radius: var(--radius); }
 .carousel-track { display: flex; transition: transform 0.4s ease; }
 .carousel-slide { min-width: 100%; }
-.carousel-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Flex slides all stretch to the height of the tallest image in the track, so
+   `contain` (not `cover`) is what keeps every picture whole when the aspect
+   ratios differ. */
+.carousel-slide img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .carousel-prev,
 .carousel-next {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
