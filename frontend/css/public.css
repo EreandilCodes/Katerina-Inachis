@@ -33,9 +33,11 @@
 
   /* Fluid root size. Every rem-based size in this file is relative to it, so
      the whole type scale grows with the display instead of staying at 16px
-     inside an ever-wider layout. 16px on phones/tablets (clamped from below),
-     18px at 1920, 20px from ~2560 up. Cap 20px so 4K/ultrawide stays sane. */
-  --font-size-base: clamp(16px, 0.3125vw + 12px, 20px);
+     inside an ever-wider layout. Phones still resolve to the 16px minimum
+     (0.36vw + 13.4px is below 16px under ~780px), so mobile is untouched,
+     while 1280/1920/2560 now sit at ~18/20.3/22px instead of 16/18/20.
+     Cap 22px so 4K/ultrawide stays sane. Keep login.html in sync. */
+  --font-size-base: clamp(16px, 0.36vw + 13.4px, 22px);
 
   --lh:           1.65;
   --lh-tight:     1.2;
@@ -156,7 +158,11 @@ button {
 .nav-menu {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 3vw, 2.5rem);
+  /* Gap is rem-based, so it used to grow along with --font-size-base and
+     squeeze the nav until "Drawing & Painting" wrapped at 1920/2560.
+     Capped at 1.35rem so the 1320px header row keeps ~60px of slack even
+     with the root at its 22px maximum. */
+  gap: clamp(1rem, 2.5vw, 1.35rem);
 }
 
 .nav-menu a {
@@ -165,6 +171,8 @@ button {
   font-weight: 400;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  /* Nav labels never break onto a second line inside the 56px header. */
+  white-space: nowrap;
   color: rgba(255,255,255,0.85);
   padding-bottom: 2px;
   transition: color var(--transition), border-color var(--transition);
@@ -245,7 +253,7 @@ button {
 /* Language toggle */
 .lang-toggle {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -563,7 +571,7 @@ button {
 .card-category {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.9rem;
+  font-size: 1rem;
   letter-spacing: 0.1em;
   color: var(--gold);
   text-transform: none;
@@ -584,18 +592,20 @@ button {
 .card-excerpt {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
   color: var(--ink-mid);
   line-height: 1.6;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  /* 4 lines, not 3: the excerpt is set much larger now, so 3 lines would
+     truncate it below the ~100 characters it used to show at 0.95rem. */
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .card-meta {
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--ink-dim);
   letter-spacing: 0.04em;
   padding: 0.9rem 1.5rem 1.5rem;
@@ -674,7 +684,7 @@ button {
 .friend-bio {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.92rem;
+  font-size: 1.05rem;
   color: var(--ink-dim);
   line-height: 1.5;
   display: -webkit-box;
@@ -706,7 +716,7 @@ button {
 .detail-category {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   letter-spacing: 0.1em;
   color: var(--gold);
   margin-bottom: 0.75rem;
@@ -725,7 +735,7 @@ button {
 
 .detail-meta {
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 1rem;
   letter-spacing: 0.08em;
   color: var(--ink-dim);
   text-transform: uppercase;
@@ -789,7 +799,7 @@ button {
   border: 1px solid var(--line, rgba(0,0,0,0.12));
   border-radius: 999px;
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 1rem;
   letter-spacing: 0.04em;
   color: var(--ink-dim);
   background: var(--bg-section, #fff);
@@ -978,7 +988,7 @@ button {
 .jewelry-item__collection {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.88rem;
+  font-size: 1rem;
   color: var(--gold);
   letter-spacing: 0.1em;
   margin-bottom: 0.4rem;
@@ -997,7 +1007,7 @@ button {
 .jewelry-item__materials {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.92rem;
+  font-size: 1.05rem;
   color: var(--ink-dim);
 }
 
@@ -1090,7 +1100,7 @@ button {
 
 .footer-nav h4 {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--gold);
@@ -1105,7 +1115,7 @@ button {
 
 .footer-nav a {
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 300;
   color: rgba(255,255,255,0.6);
   transition: color var(--transition);
@@ -1149,7 +1159,7 @@ button {
 
 .footer-copy {
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 300;
   color: rgba(255,255,255,0.35);
   letter-spacing: 0.04em;
@@ -1207,7 +1217,7 @@ button {
 .tag {
   display: inline-block;
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -1219,7 +1229,7 @@ button {
 .category-label {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 0.9rem;
+  font-size: 1rem;
   letter-spacing: 0.1em;
   color: var(--gold);
 }
@@ -1365,7 +1375,7 @@ button {
   align-items: center;
   gap: 0.5rem;
   font-family: var(--font-body);
-  font-size: 0.88rem;
+  font-size: 0.98rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-dim);

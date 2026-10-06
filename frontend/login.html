@@ -26,9 +26,10 @@
       --font-body:   'Inter', system-ui, sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    /* Fluid root so the form scales up on desktop (18px @1920, 20px @2560),
-       stays 16px on phones. See css/public.css for the same scale. */
-    html { font-size: clamp(16px, 0.3125vw + 12px, 20px); }
+    /* Fluid root so the form scales up on desktop (20.3px @1920, 22px @2560),
+       stays 16px on phones. Mirrors the clamp in css/public.css exactly —
+       change both together. */
+    html { font-size: clamp(16px, 0.36vw + 13.4px, 22px); }
     body {
       font-family: var(--font-body);
       background: var(--bg-alt);

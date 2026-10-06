@@ -487,15 +487,23 @@ listing cards (`detailCoverImgHtml`, `w=1600`, eager + `fetchpriority="high"`)
 — never the multi-MB `/uploads/gallery` original.
 
 **Type scale rule (do not regress):** the root font-size is **fluid**, not a fixed
-px value — `clamp(16px, 0.3125vw + 12px, 20px)` in `public.css`/`login.html` and
-`clamp(15px, 0.3125vw + 10.3px, 19px)` in `admin.css`. Every `rem` size is
-relative to it, so the whole scale grows on desktop while staying 16px (public) /
-15px (admin) on phones. Consequence for new CSS: **do not add sub-0.8rem
-type** (`0.62rem`/`0.7rem` used to render at 9-11px and were illegible on desktop).
-The smallest tier is 0.78rem (admin) / 0.8rem (public). Anything paired with
-`rem` text that must stay proportional should use `rem`, not a fixed `px` box —
-see `.sidebar-nav .nav-icon { width: 1.25rem }` in `admin.css`, which was `18px`
-and let the multi-glyph `⟨/⟩` icon spill out once the root grew.
+px value — `clamp(16px, 0.36vw + 13.4px, 22px)` in `public.css` **and**
+`login.html` (they must match) and `clamp(15px, 0.3125vw + 10.3px, 19px)` in
+`admin.css`. Every `rem` size is relative to it, so the whole scale grows on
+desktop while staying 16px (public) / 15px (admin) on phones. Consequence for
+new CSS: **do not add sub-0.8rem type** (`0.62rem`/`0.7rem` used to render at
+9-11px and were illegible on desktop). The smallest tier is 0.78rem (admin) /
+0.9rem (public). Anything paired with `rem` text that must stay proportional
+should use `rem`, not a fixed `px` box — see `.sidebar-nav .nav-icon { width:
+1.25rem }` in `admin.css`, which was `18px` and let the multi-glyph `⟨/⟩` icon
+spill out once the root grew.
+
+**Header budget:** `.site-header__inner` is capped at `--max-width` (1320px) and
+holds logo + 7 nav labels + lang toggle. Because nav labels are now large enough
+that they wrapped at 1920/2560, `.nav-menu` gap is capped at `1.35rem` (it is
+`rem`-based, so it grows with the root) and `.nav-menu a` is `white-space:
+nowrap`. If you raise the root again, re-check that row — the layout check in
+`tests/` reports `wrap Drawing & Painting` when it runs out of room.
 
 **Reading column rule:** `--max-reading` is **900px** because it must equal
 `.detail-cover { max-width: 900px }` — the article text block and the cover
