@@ -41,7 +41,7 @@
   --lh-tight:     1.2;
 
   /* Layout */
-  --max-reading:  720px;
+  --max-reading:  900px;  /* equals .detail-cover, so text blocks line up with the pictures */
   --max-width:    1320px;
   --section-v:    clamp(4rem, 8vw, 8rem);
   --gap:          clamp(1.5rem, 4vw, 3rem);
@@ -68,6 +68,10 @@ html {
 body {
   font-family: var(--font-body);
   font-weight: 300;
+  /* Default paragraph text. Without this, a plain <p> just inherits the bare
+     root size, which is too small to read comfortably; 1.1rem gives it +10%
+     while every element that sets its own size still wins over it. */
+  font-size: 1.1rem;
   line-height: var(--lh);
   color: var(--ink);
   background: var(--bg);
@@ -459,7 +463,7 @@ button {
 .section-subtitle {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   color: var(--ink-dim);
   letter-spacing: 0.03em;
 }
@@ -467,7 +471,7 @@ button {
 .page-intro {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: clamp(1.05rem, 2vw, 1.15rem);
+  font-size: clamp(1.1rem, 2vw, 1.25rem);
   line-height: 1.7;
   color: var(--ink-mid);
   letter-spacing: 0.02em;
@@ -692,7 +696,9 @@ button {
 }
 
 .detail-header {
-  max-width: 800px;
+  /* Same width as the pictures and the body text, so the whole detail
+     column reads as one aligned block. */
+  max-width: var(--max-reading);
   margin: 0 auto clamp(2rem, 5vw, 4rem);
   text-align: center;
 }
@@ -801,7 +807,10 @@ button {
   margin: 0 auto;
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 1.1rem;
+  /* Article body: the site's most-read text. 1.25rem over the widened
+     column above gives ~75 characters per line at 1920 (67-84 at
+     2560/1280), up from 19.8px/68ch before. */
+  font-size: 1.25rem;
   line-height: var(--lh);
   color: var(--ink-mid);
 }
@@ -1073,7 +1082,7 @@ button {
 .footer-brand p {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   line-height: 1.7;
   color: rgba(255,255,255,0.55);
   max-width: 280px;
@@ -1264,7 +1273,7 @@ button {
   color: var(--success);
   border-radius: var(--radius);
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .form-error {
@@ -1273,7 +1282,7 @@ button {
   color: var(--error);
   border-radius: var(--radius);
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 /* Contact section */
@@ -1309,7 +1318,7 @@ button {
 
 .empty-state p {
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 /* ── 20. Image gallery lightbox ────────────────────────────── */

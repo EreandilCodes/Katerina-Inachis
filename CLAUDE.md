@@ -497,6 +497,15 @@ The smallest tier is 0.78rem (admin) / 0.8rem (public). Anything paired with
 see `.sidebar-nav .nav-icon { width: 1.25rem }` in `admin.css`, which was `18px`
 and let the multi-glyph `⟨/⟩` icon spill out once the root grew.
 
+**Reading column rule:** `--max-reading` is **900px** because it must equal
+`.detail-cover { max-width: 900px }` — the article text block and the cover
+picture are meant to be the same width. Do not narrow one without the other.
+`.detail-header` and `.detail-excerpt`/`-perex`/`-tags` all derive from
+`var(--max-reading)`, so the whole detail column stays aligned. Default
+paragraph size comes from `body { font-size: 1.1rem }` (bare `<p>`s with no
+class of their own), and article body copy is `.text-content { font-size:
+1.25rem }` — dropping either re-introduces the "too small to read" report.
+
 1. ALL routes use `logger` — no console.log in backend
 2. ALL routes use `{ AuthMiddleware }` named import
 3. `generateSlug()` in every route that needs it
