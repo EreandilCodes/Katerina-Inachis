@@ -890,12 +890,15 @@ button {
 /* ── Pasted-content guard ─────────────────────────────────────
    Stories are pasted into the editor from Word/Google Docs, which wraps
    every paragraph in inline styles — typically font-size:11pt (14.7px)
-   plus the document's own font-family and a tight line-height. Inline
-   styles beat every normal declaration, so those paragraphs ignored the
-   fluid root entirely: the story body stayed frozen at 14.7px while
-   cards, nav and footer grew normally. !important is not decoration
-   here, it is the only thing that outranks a pasted attribute — and it
-   is why existing production content is fixed without touching the DB.
+   plus a tight line-height. Inline styles beat every normal declaration,
+   so those paragraphs ignored the fluid root entirely: the story body
+   stayed frozen at 14.7px while cards, nav and footer grew normally.
+   !important is not decoration here, it is the only thing that outranks
+   a pasted attribute — and it is why existing production content is
+   fixed without touching the DB.
+   ONLY size and line-height are taken over. The pasted font-family is
+   deliberately left alone: stories keep showing in the typeface they
+   were written in, which is how they have always looked on this site.
    Values mirror the declarations above; sup/sub and images are left
    alone so they keep their own sizing. */
 .text-content p,
@@ -903,7 +906,6 @@ button {
 .text-content span,
 .text-content div {
   font-size: inherit !important;
-  font-family: inherit !important;
 }
 
 .text-content p,
@@ -914,12 +916,6 @@ button {
 
 .text-content h1 {
   font-size: 2em !important;
-  font-family: inherit !important;
-}
-
-.text-content h2,
-.text-content h3 {
-  font-family: var(--font-display) !important;
 }
 
 .text-content h2 { font-size: 1.8rem !important; }
@@ -928,7 +924,6 @@ button {
 .text-content blockquote,
 .detail-perex blockquote {
   font-size: 1.2rem !important;
-  font-family: var(--font-display) !important;
   line-height: 1.5 !important;
 }
 

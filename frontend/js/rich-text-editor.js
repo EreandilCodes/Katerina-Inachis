@@ -160,12 +160,14 @@ class RichTextEditor {
   }
 
   // Word and Google Docs wrap every paragraph in the document's own inline
-  // styling: font-size:11pt, their font-family, a tight line-height, their
-  // colours. Those attributes reach the stored story and then outrank every
-  // rule in public.css, so a published body text stays at 14.7px however
-  // large the site's type scale grows. Dropping them here stops new pastes
-  // from carrying the problem; the .text-content guard in public.css covers
-  // the stories that were pasted before this handler existed.
+  // styling: font-size:11pt, a tight line-height, their colours, and their
+  // typeface. The size and spacing reach the stored story and then outrank
+  // every rule in public.css, so a published body text stays at 14.7px
+  // however large the site's type scale grows. Dropping those here stops new
+  // pastes from carrying the problem; the .text-content guard in public.css
+  // covers the stories that were pasted before this handler existed.
+  // The typeface is deliberately kept — stories stay in the font they were
+  // written in, as they always have been on this site.
   // Structure survives untouched — paragraphs, headings, lists, links,
   // bold/italic/underline, images and the editor's own .yt-embed markup.
   // Classes are deliberately kept: they are how the embeds and captions are
@@ -200,11 +202,28 @@ class RichTextEditor {
         return;
       }
 
-      // Presentation belongs to the source document, not to the site: the
-      // article is laid out by public.css alone.
-      ['style', 'id', 'face', 'size', 'color', 'bgcolor', 'align', 'lang', 'dir'].forEach((attr) => {
+      // Presentation that decides layout is dropped, so public.css lays the
+      // article out alone: colour, alignment and spacing — and above all
+      // font-size and line-height, which is what left pasted stories at 11pt
+      // whatever the type scale did.
+      ['id', 'face', 'size', 'color', 'bgcolor', 'align', 'lang', 'dir'].forEach((attr) => {
         if (el.hasAttribute(attr)) el.removeAttribute(attr);
       });
+
+      // The typeface itself survives: a story keeps the font it was written
+      // in, matching what is already published. font-weight and font-style
+      // ride along because they carry emphasis — Google Docs writes bold as
+      // a span style rather than a <b> tag.
+      if (el.hasAttribute('style')) {
+        const kept = ['font-family', 'font-weight', 'font-style']
+          .map((prop) => {
+            const value = el.style.getPropertyValue(prop);
+            return value ? prop + ': ' + value : null;
+          })
+          .filter(Boolean);
+        if (kept.length) el.setAttribute('style', kept.join('; '));
+        else el.removeAttribute('style');
+      }
     });
 
     return body.innerHTML;
