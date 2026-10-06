@@ -94,6 +94,9 @@ class RichTextEditor {
     // Sync contenteditable → hidden textarea on every input
     this.content.addEventListener('input', () => this._syncToTextarea());
 
+    // Clean document styling out of pasted HTML before it is inserted
+    this.content.addEventListener('paste', (e) => this._handlePaste(e));
+
     // Tab switching
     this.tabVisual.addEventListener('click', () => this._switchTab('visual'));
     this.tabHTML.addEventListener('click', () => this._switchTab('html'));
@@ -135,6 +138,76 @@ class RichTextEditor {
       this.content.style.display = 'none';
       this.source.style.display = '';
     }
+  }
+
+  // ── Paste sanitising ───────────────────────────────────────
+
+  _handlePaste(e) {
+    const cd = e.clipboardData || window.clipboardData;
+    if (!cd) return;
+
+    const html = cd.getData('text/html');
+    const clean = html
+      ? this._sanitizePastedHtml(html)
+      : this._escapeHtml(cd.getData('text/plain')).replace(/\r\n|\r|\n/g, '<br>');
+
+    // Nothing usable (e.g. an image-only paste) — leave it to the browser.
+    if (!clean) return;
+
+    e.preventDefault();
+    document.execCommand('insertHTML', false, clean);
+    this._syncToTextarea();
+  }
+
+  // Word and Google Docs wrap every paragraph in the document's own inline
+  // styling: font-size:11pt, their font-family, a tight line-height, their
+  // colours. Those attributes reach the stored story and then outrank every
+  // rule in public.css, so a published body text stays at 14.7px however
+  // large the site's type scale grows. Dropping them here stops new pastes
+  // from carrying the problem; the .text-content guard in public.css covers
+  // the stories that were pasted before this handler existed.
+  // Structure survives untouched — paragraphs, headings, lists, links,
+  // bold/italic/underline, images and the editor's own .yt-embed markup.
+  // Classes are deliberately kept: they are how the embeds and captions are
+  // recognised, and document classes (MsoNormal, google-docs-guard) match
+  // no rule on the public site anyway.
+  _sanitizePastedHtml(html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const body = doc.body;
+    if (!body) return '';
+
+    // Document chrome and Office <style> blocks — never story text.
+    body
+      .querySelectorAll('style, script, meta, link, title, noscript, object, applet, form, input, button, select, textarea')
+      .forEach((el) => el.remove());
+
+    body.querySelectorAll('*').forEach((el) => {
+      const tag = el.tagName.toLowerCase();
+
+      // Office/Docs wrapper elements (o:p, w:sdt, mso-*) and <font> —
+      // unwrapped so the text they hold is kept.
+      //
+      // Same for an inline element wrapped around whole blocks: Google Docs
+      // encloses the entire paste in <b style="font-weight:normal">, i.e.
+      // "not bold". Once the style attribute goes, that <b> would silently
+      // bold the whole story, so the wrapper has to go with it.
+      const isWrapper = tag.includes(':') || tag === 'font' ||
+        (/^(b|strong|i|em|u|s|strike|small|span)$/.test(tag) &&
+          Array.from(el.children).some((child) =>
+            /^(p|div|h[1-6]|ul|ol|blockquote|table|hr|figure|section|article)$/.test(child.tagName.toLowerCase())));
+      if (isWrapper) {
+        el.replaceWith(...Array.from(el.childNodes));
+        return;
+      }
+
+      // Presentation belongs to the source document, not to the site: the
+      // article is laid out by public.css alone.
+      ['style', 'id', 'face', 'size', 'color', 'bgcolor', 'align', 'lang', 'dir'].forEach((attr) => {
+        if (el.hasAttribute(attr)) el.removeAttribute(attr);
+      });
+    });
+
+    return body.innerHTML;
   }
 
   // ── Toolbar actions ────────────────────────────────────────

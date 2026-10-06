@@ -512,7 +512,26 @@ picture are meant to be the same width. Do not narrow one without the other.
 `var(--max-reading)`, so the whole detail column stays aligned. Default
 paragraph size comes from `body { font-size: 1.1rem }` (bare `<p>`s with no
 class of their own), and article body copy is `.text-content { font-size:
-1.25rem }` — dropping either re-introduces the "too small to read" report.
+1.35rem }` — dropping either re-introduces the "too small to read" report.
+
+**Pasted-content guard (do not remove):** stories are pasted into the editor
+from Word/Google Docs, which wraps every paragraph in inline `font-size`
+(typically `11pt` = 14.7px), its own `font-family` and a tight `line-height`.
+Inline styles beat normal declarations, so those paragraphs ignored the fluid
+root entirely — cards/nav/footer grew while a pasted story body stayed frozen
+at 14.7px, which is the root cause of the second "too small to read" report.
+`public.css` therefore pins reading text with `!important` inside
+`.text-content` (and `.detail-perex blockquote`): `p`/`li`/`span`/`div` inherit
+size, family and line-height, headings and quotes keep their declared `rem`
+values. The values deliberately mirror the declarations above, so clean content
+is unchanged — the `!important` exists solely to outrank a pasted attribute.
+`rich-text-editor.js` has the matching `_sanitizePastedHtml()` on `paste`
+(`style`, `id`, `face`, `size`, `color`, `bgcolor`, `align`, `lang`, `dir` are
+dropped; `<font>`/`o:p`/`w:*` wrappers are unwrapped, including Google Docs'
+`<b style="font-weight:normal">` shell which would otherwise bold the whole
+story). `class` is intentionally **kept** — it is how `.yt-embed`/`.yt-caption`
+survive a copy-paste. Content already in the database is fixed by the CSS
+alone; no migration touches it.
 
 1. ALL routes use `logger` — no console.log in backend
 2. ALL routes use `{ AuthMiddleware }` named import

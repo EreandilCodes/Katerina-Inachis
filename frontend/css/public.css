@@ -817,10 +817,11 @@ button {
   margin: 0 auto;
   font-family: var(--font-body);
   font-weight: 300;
-  /* Article body: the site's most-read text. 1.25rem over the widened
-     column above gives ~75 characters per line at 1920 (67-84 at
-     2560/1280), up from 19.8px/68ch before. */
-  font-size: 1.25rem;
+  /* Article body: the site's most-read text. 1.35rem over the widened
+     column above gives ~61 characters per line at 1920 (54-69 at
+     2560/1280) — the comfortable reading range — and renders at 27.4px
+     at 1920, up from 19.8px/68ch before the type-scale work. */
+  font-size: 1.35rem;
   line-height: var(--lh);
   color: var(--ink-mid);
 }
@@ -884,6 +885,51 @@ button {
 
 .text-content li {
   margin-bottom: 0.5em;
+}
+
+/* ── Pasted-content guard ─────────────────────────────────────
+   Stories are pasted into the editor from Word/Google Docs, which wraps
+   every paragraph in inline styles — typically font-size:11pt (14.7px)
+   plus the document's own font-family and a tight line-height. Inline
+   styles beat every normal declaration, so those paragraphs ignored the
+   fluid root entirely: the story body stayed frozen at 14.7px while
+   cards, nav and footer grew normally. !important is not decoration
+   here, it is the only thing that outranks a pasted attribute — and it
+   is why existing production content is fixed without touching the DB.
+   Values mirror the declarations above; sup/sub and images are left
+   alone so they keep their own sizing. */
+.text-content p,
+.text-content li,
+.text-content span,
+.text-content div {
+  font-size: inherit !important;
+  font-family: inherit !important;
+}
+
+.text-content p,
+.text-content li,
+.text-content div {
+  line-height: inherit !important;
+}
+
+.text-content h1 {
+  font-size: 2em !important;
+  font-family: inherit !important;
+}
+
+.text-content h2,
+.text-content h3 {
+  font-family: var(--font-display) !important;
+}
+
+.text-content h2 { font-size: 1.8rem !important; }
+.text-content h3 { font-size: 1.4rem !important; }
+
+.text-content blockquote,
+.detail-perex blockquote {
+  font-size: 1.2rem !important;
+  font-family: var(--font-display) !important;
+  line-height: 1.5 !important;
 }
 
 /* ── 12. Gallery Grid ──────────────────────────────────────── */
