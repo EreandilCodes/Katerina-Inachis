@@ -118,7 +118,7 @@ export class SettingsManager {
           : f.type === 'image'
             ? `<div class="input-with-btn">
                 <input class="form-input" type="text" id="setting_${f.key}" name="${f.key}" value="${escHtml(this.settings[f.key]?.value || '')}" placeholder="https://…">
-                <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.managers.gallery?.showGalleryPicker('setting_${f.key}')">Z galerie</button>
+                <button type="button" class="btn-admin btn-admin--outline btn-admin--sm" onclick="window.admin.openGalleryPicker('setting_${f.key}')">Z galerie</button>
               </div>`
             : `<input class="form-input" type="${f.type}" id="setting_${f.key}" name="${f.key}" value="${escHtml(this.settings[f.key]?.value || '')}">`}
       </div>`).join('') +

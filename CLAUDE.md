@@ -570,6 +570,14 @@ apply. Do **not** widen this to `.text-content` in general: story bodies stay
 on `--font-body` (or on the face they were pasted in), which is a separate,
 deliberate decision.
 
+**Admin gallery picker lazy-init (do not regress):** the gallery manager is
+created lazily when the admin "Galerie" section is first opened, so any "Z
+galerie" button must call `window.admin.openGalleryPicker(inputId, multiple)`
+(`AdminController.openGalleryPicker` in `frontend/js/admin.js`), which
+initializes the manager on demand — never
+`window.admin.managers.gallery?.showGalleryPicker(...)`, which silently does
+nothing until the Galerie tab has been visited.
+
 **Pasted-content guard (do not remove):** stories are pasted into the editor
 from Word/Google Docs, which wraps every paragraph in inline `font-size`
 (typically `11pt` = 14.7px) and a tight `line-height`. Inline styles beat

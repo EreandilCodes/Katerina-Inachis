@@ -328,6 +328,65 @@ try {
     }
   });
 
+  await check('D2: gallery picker opens from another section without visiting Galerie', async () => {
+    // Regression: the gallery manager is lazy-initialized on section open, so the
+    // "Z galerie" picker buttons must work from any section (here: Texty) without
+    // ever opening the Galerie tab.
+    const page = await browser.newPage();
+    page.setDefaultTimeout(30000);
+    try {
+      await page.goto(`${BASE}/login`, { waitUntil: 'load' });
+      await page.evaluate((t) => localStorage.setItem('inachis_token', t), token);
+      await page.goto(`${BASE}/admin`, { waitUntil: 'load' });
+      await page.waitForFunction(
+        () => document.getElementById('adminPageTitle') && document.getElementById('adminPageTitle').textContent.trim().length > 0,
+        null,
+        { timeout: 30000 }
+      );
+
+      // Texts section (never Galerie) → open the "new text" form.
+      await page.locator('a[data-section="texts"]').first().click();
+      await page.waitForFunction(
+        () => {
+          const el = document.getElementById('textsSection');
+          return el && getComputedStyle(el).display !== 'none';
+        },
+        null,
+        { timeout: 15000 }
+      );
+      await page.evaluate(() => {
+        const b = [...document.querySelectorAll('#textsSection button')].find((x) => x.textContent.includes('Přidat'));
+        b?.click();
+      });
+      await page.waitForFunction(
+        () => {
+          const ov = document.getElementById('textsModalOverlay');
+          return ov && !ov.classList.contains('hidden');
+        },
+        null,
+        { timeout: 15000 }
+      );
+
+      await page.locator('#textsModalOverlay').getByText('Z galerie').first().click();
+      await page.waitForFunction(
+        () => {
+          const ov = document.getElementById('galleryPickerModalOverlay');
+          return ov && !ov.classList.contains('hidden') && ov.querySelectorAll('#galleryPickerGrid .gallery-picker-item').length > 0;
+        },
+        null,
+        { timeout: 15000 }
+      );
+      assert(true, 'picker opened with items, Galerie tab never visited');
+
+      // Picking the first image fills the target input.
+      await page.locator('#galleryPickerGrid .gallery-picker-item').first().click();
+      const coverVal = await page.evaluate(() => document.getElementById('txtCoverImage')?.value || '');
+      assert(/^\/uploads\/gallery\//.test(coverVal), `expected /uploads/gallery/ src, got ${coverVal || '(empty)'}`);
+    } finally {
+      await page.close();
+    }
+  });
+
   // ── E. Persistence across a server restart (local only) ─────────────
   if (RESTART_CMD) {
     let execSync;

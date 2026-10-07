@@ -126,6 +126,16 @@ class AdminController {
     }
   }
 
+  // Gallery picker usable from any section without visiting the Galerie tab
+  // first (the gallery manager is otherwise initialized lazily on section open).
+  async openGalleryPicker(targetInputId, multiple = false) {
+    if (!this.managers.gallery) {
+      this.managers.gallery = new GalleryManager(this.auth, this);
+      await this.managers.gallery.init();
+    }
+    await this.managers.gallery.showGalleryPicker(targetInputId, multiple);
+  }
+
   updateNav(name) {
     document.querySelectorAll('[data-section]').forEach(el => {
       el.classList.toggle('active', el.dataset.section === name);
