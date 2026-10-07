@@ -700,6 +700,47 @@ ul, ol { list-style: none; }
   color: var(--error);
 }
 
+/* ── Tag suggestion popup (našeptávač) ─────────────────────── */
+.form-group:has(.tag-chips) {
+  position: relative;
+}
+
+.tag-suggest {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 70;
+  max-height: 230px;
+  overflow-y: auto;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 10px 28px rgba(60, 42, 80, 0.14);
+}
+
+.tag-suggest__item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.tag-suggest__item:hover,
+.tag-suggest__item.suggest-active {
+  background: var(--violet-pale);
+}
+
+.tag-suggest__badge {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+}
+
 .input-with-btn {
   display: flex;
   gap: 0.5rem;

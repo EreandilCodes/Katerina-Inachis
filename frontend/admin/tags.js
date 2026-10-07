@@ -162,10 +162,52 @@ export class TagPicker {
       console.warn(`TagPicker: missing #${chipsId} or #${inputId} in admin.html`);
       return;
     }
+    // Suggestion popup — "vybírátko" of existing tags while typing.
+    this.popup = null;
+    this._suggestList = [];
+    this.popup = document.createElement('div');
+    this.popup.className = 'tag-suggest';
+    this.popup.hidden = true;
+    this.inputEl.insertAdjacentElement('afterend', this.popup);
+    this._suppressHide = false;
+    this.popup.addEventListener('mousedown', (e) => {
+      const item = e.target.closest('.tag-suggest__item');
+      if (!item) return;
+      e.preventDefault(); // keep focus in the input
+      this._suppressHide = true;
+      this.addByName(item.dataset.name);
+      setTimeout(() => { this._suppressHide = false; }, 0);
+    });
+    this.inputEl.addEventListener('input', () => this.updateSuggest());
+    // Load the existing-tag list lazily on first focus — including the "new
+    // item" form, so suggestions ("vybírátko") work even before editing.
+    this.inputEl.addEventListener('focus', () => {
+      if (!this._initPromise) this.init();
+      this.updateSuggest();
+    });
+    this.inputEl.addEventListener('blur', () => {
+      setTimeout(() => { if (!this._suppressHide) this.hideSuggest(); }, 150);
+    });
+
     this.inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.moveSuggest(1); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); this.moveSuggest(-1); return; }
+      if (e.key === 'Escape') { this.hideSuggest(); return; }
+      const open = this.popup && !this.popup.hidden && this._suggestList.length > 0;
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        this.addByName(this.inputEl.value);
+        if (open) {
+          const active = this.popup.querySelector('.suggest-active');
+          this.addByName(active ? active.dataset.name : this._suggestList[0].name);
+        } else {
+          this.addByName(this.inputEl.value);
+        }
+        return;
+      }
+      if (e.key === 'Tab' && open) {
+        e.preventDefault();
+        const active = this.popup.querySelector('.suggest-active');
+        this.addByName(active ? active.dataset.name : this._suggestList[0].name);
       }
     });
     this.chipsEl.addEventListener('click', (e) => {
@@ -191,6 +233,14 @@ export class TagPicker {
   }
 
   async loadOptionsFuture() {
+    await this.refreshOptions();
+  }
+
+  // Reload the list of all existing tags. Used on init and as a fallback when
+  // creating a duplicate is rejected, so a tag that was created in another
+  // section's editor (or another manager) after this picker cached its list
+  // can still be picked here — tags must be reusable across content items.
+  async refreshOptions() {
     const response = await fetch('/api/tags/admin/all', { headers: this.admin.auth.getAuthHeaders() });
     const ct = response.headers.get('content-type');
     if (!response.ok) {
@@ -199,6 +249,51 @@ export class TagPicker {
     }
     if (!ct?.includes('application/json')) throw new Error('Non-JSON response');
     this.all = await response.json();
+    // The list resolved after typing — refresh the open suggestion popup.
+    if (document.activeElement === this.inputEl) this.updateSuggest();
+  }
+
+  matchByName(name) {
+    const clean = String(name || '').trim().toLowerCase();
+    return this.all.find((t) => String(t.name).toLowerCase() === clean) || null;
+  }
+
+  selectTag(tag) {
+    this.selected.set(tag.id, { name: tag.name, slug: tag.slug });
+    this.render();
+  }
+
+  // ── Suggestion popup (našeptávač) ──────────────────────────
+  updateSuggest() {
+    if (!this.popup) return;
+    const term = (this.inputEl.value || '').trim().toLowerCase();
+    const taken = new Set([...this.selected.values()].map((t) => t.name.toLowerCase()));
+    this._suggestList = this.all
+      .filter((t) => String(t.name).toLowerCase().includes(term) && !taken.has(String(t.name).toLowerCase()))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name), 'cs'))
+      .slice(0, 8);
+    if (!this._suggestList.length) { this.hideSuggest(); return; }
+    this.popup.innerHTML = this._suggestList.map((t, i) => `
+      <div class="tag-suggest__item${i === 0 ? ' suggest-active' : ''}" data-name="${escHtml(t.name)}">
+        #${escHtml(t.name)}<span class="tag-suggest__badge">/tag/${escHtml(t.slug)}</span>
+      </div>`).join('');
+    this.popup.hidden = false;
+  }
+
+  moveSuggest(delta) {
+    if (!this.popup || this.popup.hidden || !this._suggestList.length) return;
+    const items = [...this.popup.querySelectorAll('.tag-suggest__item')];
+    const cur = items.indexOf(this.popup.querySelector('.suggest-active'));
+    const next = cur < 0 ? 0 : (cur + delta + items.length) % items.length;
+    items.forEach((el, i) => el.classList.toggle('suggest-active', i === next));
+  }
+
+  hideSuggest() {
+    if (this.popup) {
+      this.popup.hidden = true;
+      this.popup.innerHTML = '';
+      this._suggestList = [];
+    }
   }
 
   reset() {
@@ -251,43 +346,57 @@ export class TagPicker {
   async addByName(name) {
     const clean = String(name || '').trim();
     if (!clean) return;
-    const match = this.all.find((t) => t.name.toLowerCase() === clean.toLowerCase());
-    if (match) {
-      this.selected.set(match.id, { name: match.name, slug: match.slug });
-    } else {
-      try {
-        const response = await fetch('/api/tags', {
-          method: 'POST',
-          headers: { ...this.admin.auth.getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: clean }),
-        });
-        const ct = response.headers.get('content-type');
-        if (!response.ok) {
-          const err = ct?.includes('application/json') ? await response.json() : { error: await response.text() };
-          throw new Error(err.error || 'Request failed');
-        }
-        if (!ct?.includes('application/json')) throw new Error('Non-JSON response');
+
+    const existing = this.matchByName(clean);
+    if (existing) return this.selectTag(existing);
+
+    try {
+      const response = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { ...this.admin.auth.getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: clean }),
+      });
+      if (response.ok) {
         const created = await response.json();
         this.all.push(created.item);
-        this.selected.set(created.item.id, { name: created.item.name, slug: created.item.slug });
-      } catch (err) {
-        this.admin.showNotification(`Chyba: ${err.message}`, 'error');
-        return;
+        return this.selectTag(created.item);
       }
+      // Creating failed — most likely the tag already exists (created in
+      // another section/manager after this picker cached its list). Refresh
+      // the options and match again instead of blocking reuse.
+      let message = 'Vytvoření štítku selhalo';
+      try {
+        const ct = response.headers.get('content-type');
+        const body = ct?.includes('application/json') ? await response.json() : {};
+        message = body.error || message;
+      } catch { /* keep default message */ }
+      await this.refreshOptions().catch(() => {});
+      const retry = this.matchByName(clean);
+      if (retry) return this.selectTag(retry);
+      this.admin.showNotification(`Chyba: ${message}`, 'error');
+      return;
+    } catch (err) {
+      // Network-level failure — refresh the option list and retry the match
+      // once before giving up.
+      await this.refreshOptions().catch(() => {});
+      const retry = this.matchByName(clean);
+      if (retry) return this.selectTag(retry);
+      this.admin.showNotification(`Chyba: ${err.message}`, 'error');
+      return;
     }
-    this.render();
   }
 
   render() {
     if (!this.chipsEl) return;
     if (!this.selected.size) {
-      this.chipsEl.innerHTML = `<span class="tag-chips__hint">Zadejte název štítku a stiskněte Enter.</span>`;
+      this.chipsEl.innerHTML = `<span class="tag-chips__hint">Zadejte název štítku nebo zvolte ze stávajících.</span>`;
     } else {
       this.chipsEl.innerHTML = [...this.selected.values()]
         .map((t) => `<span class="tag-chip">#${escHtml(t.name)}<button type="button" class="tag-chip__remove" aria-label="Odebrat štítek">×</button></span>`)
         .join('');
     }
     if (this.inputEl) this.inputEl.value = '';
+    this.hideSuggest();
   }
 }
 

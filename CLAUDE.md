@@ -398,6 +398,16 @@ assigned from each editor's tag-chips input (`*TagsChips`/`*TagsInput` in
   responses are `{ message, item }`; editors capture `result?.item?.id` and call
   `tagPicker.assign(type, savedId)` in `saveItem` — a tag failure must never
   break the content save (wrapped in try/catch that only toasts the error).
+- `TagPicker` **must let a tag be reused on any number of items**: its option
+  list lazy-loads on first focus (new-item forms included), so the suggestion
+  popup (`updateSuggest()`, `.tag-suggest`) works even before editing. When
+  creating a typed tag is rejected with 400 (it already exists — created in
+  another section/manager after this picker cached its list), `addByName()`
+  refreshes `/api/tags/admin/all` and re-matches instead of failing. Each picker
+  owns exactly one `.tag-suggest` popup placed right after its input
+  (`inputEl.nextElementSibling`); never locate it via a bare
+  `querySelector('.tag-suggest')` — the first match might be another section's
+  (hidden) popup.
 - Deleting a tag **never cascades**: it only removes the `content_tags` rows;
   content stays fully intact. Deleting content cleans up its join rows.
   `artworks`/`jewelry` have no `published_at` column, so their tag-detail

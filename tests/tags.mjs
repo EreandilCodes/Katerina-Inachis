@@ -347,6 +347,65 @@ try {
       'chip did not re-appear after re-open');
   });
 
+  await check('Admin: a tag is reusable in another section form + suggestions (našeptávač)', async () => {
+    // Regression: each section's TagPicker caches the tag list when the section
+    // is first opened. Creating a new tag in the Texts form AFTER the Blog
+    // picker cached its list, then reusing the SAME tag in the Blog form, must
+    // not fail with "already exists" — the picker has to refresh and pick the
+    // existing tag. Same-tag reuse across items is the whole point of tags.
+    const reuseName = `${MARK} Reuse ${TS}`;
+
+    // 1) Open Blog FIRST so its picker caches a tag list stale w.r.t. reuseName.
+    await page.evaluate(() => document.getElementById('textsModalOverlay')?.classList.add('hidden'));
+    await page.click('.sidebar-nav a[data-section="blog"]');
+    await waitFor(page, () => !!document.querySelector('#blogTableBody'));
+
+    // 2) Texts form → create reuseName via the Texts picker (POST creates it).
+    await page.click('.sidebar-nav a[data-section="texts"]');
+    await waitFor(page, () => !!document.querySelector('#textsTableBody'));
+    await page.click('.section-header button:has-text("+ Přidat text")');
+    await waitFor(page, () => !document.getElementById('textsModalOverlay').classList.contains('hidden'));
+    await page.fill('#textsTagsInput', reuseName);
+    await page.press('#textsTagsInput', 'Enter');
+    await waitFor(page, (name) => {
+      const chips = document.querySelectorAll('#textsTagsChips .tag-chip');
+      return [...chips].some((c) => c.textContent.includes(name));
+    }, reuseName);
+
+    // 3) Blog form → reuse the SAME tag although the cached list doesn't know it.
+    await page.evaluate(() => document.getElementById('textsModalOverlay')?.classList.add('hidden'));
+    await page.click('.sidebar-nav a[data-section="blog"]');
+    await waitFor(page, () => !!document.querySelector('#blogTableBody'));
+    await page.click('.section-header button:has-text("+ Nový záznam")');
+    await waitFor(page, () => !document.getElementById('blogModalOverlay').classList.contains('hidden'));
+
+    await page.fill('#blogTagsInput', reuseName);
+    await page.press('#blogTagsInput', 'Enter');
+    await waitFor(page, (name) => {
+      const chips = document.querySelectorAll('#blogTagsChips .tag-chip');
+      return [...chips].some((c) => c.textContent.includes(name));
+    }, reuseName);
+    const toastAfterReuse = await page.evaluate(() => document.getElementById('adminToast')?.textContent || '');
+    assert(!toastAfterReuse.includes('existuje'), `reuse produced error toast: "${toastAfterReuse}"`);
+
+    // 4) Našeptávač: typing an existing tag's full name shows the suggestion
+    //    popup; Enter picks it (no duplicate POST attempt). Each picker owns
+    //    its own .tag-suggest popup — target the one right after THIS input.
+    await page.fill('#blogTagsInput', QA_TAG2);
+    await waitFor(page, (name) => {
+      const popup = document.getElementById('blogTagsInput')?.nextElementSibling;
+      return popup && popup.classList.contains('tag-suggest') && !popup.hidden
+        && popup.querySelector(`.tag-suggest__item[data-name="${name}"]`);
+    }, QA_TAG2);
+    await page.press('#blogTagsInput', 'Enter');
+    await waitFor(page, (name) => {
+      const chips = document.querySelectorAll('#blogTagsChips .tag-chip');
+      return [...chips].some((c) => c.textContent.includes(name));
+    }, QA_TAG2);
+
+    await page.evaluate(() => document.getElementById('blogModalOverlay')?.classList.add('hidden'));
+  });
+
   // ── Delete semantics ───────────────────────────────────────
   await check('Deleting a tag detaches content only; content stays published', async () => {
     await fetchJson(`${BASE}/api/tags/${qaTagIds[0]}`, { method: 'DELETE', headers: auth(token) });
