@@ -473,9 +473,6 @@ function renderJewelryItem(j) {
         ${j.collection ? `<span class="jewelry-item__collection">${esc(j.collection)}</span>` : ''}
         <div class="jewelry-item__title">${esc(j.title)}</div>
         ${j.materials ? `<div class="jewelry-item__materials">${esc(j.materials)}</div>` : ''}
-        <span class="jewelry-badge ${j.is_available ? 'jewelry-badge--available' : 'jewelry-badge--unavailable'}">
-          ${j.is_available ? (window.t ? window.t('jewelry.available') : 'Dostupné') : (window.t ? window.t('jewelry.unavailable') : 'Nedostupné')}
-        </span>
       </div>
     </div>`;
 }
@@ -802,11 +799,8 @@ async function renderJewelryDetail(slug) {
           ${cover ? `<div class="detail-cover" style="max-width:600px">${detailCoverImgHtml(cover, j.title)}</div>` : ''}
           <div class="text-content" style="margin-top:2rem">
             ${j.description ? `<p>${esc(j.description)}</p>` : ''}
-            ${j.materials ? `<p><strong>${i('jewelry.materials')}:</strong> ${esc(j.materials)}</p>` : ''}
+            ${j.materials ? `<p class="text-tech"><strong>${i('jewelry.materials')}:</strong> ${esc(j.materials)}</p>` : ''}
             ${j.dimensions ? `<p><strong>${i('jewelry.dimensions')}:</strong> ${esc(j.dimensions)}</p>` : ''}
-            <span class="jewelry-badge ${j.is_available ? 'jewelry-badge--available' : 'jewelry-badge--unavailable'}">
-              ${j.is_available ? i('jewelry.available') : i('jewelry.currentlyUnavailable')}
-            </span>
           </div>
           ${images.length > 1 ? `
           <div class="carousel" style="margin-top:3rem;max-width:600px;margin-left:auto;margin-right:auto">

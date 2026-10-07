@@ -294,7 +294,12 @@ try {
       await page.waitForFunction(
         (idn) => {
           const tbody = document.getElementById('galleryImagesTableBody');
-          return tbody && tbody.textContent.includes(idn);
+          if (!tbody) return false;
+          // The search input is debounced (350ms) — wait until the filter has
+          // applied and the table is narrowed to the single matching row,
+          // otherwise the first <img> may still be a different, newer upload.
+          const rows = tbody.querySelectorAll('tr');
+          return rows.length === 1 && tbody.textContent.includes(idn);
         },
         NOISE_IDN,
         { timeout: 15000 }

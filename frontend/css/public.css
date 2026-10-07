@@ -779,6 +779,12 @@ button {
   object-fit: contain;
 }
 
+/* The "Technika: …" line on a drawing detail reads as the artwork's method
+   caption — italic, matching the Kresba a malba serif. */
+.detail-page--drawing .text-content p.text-tech {
+  font-style: italic;
+}
+
 /* Perex (excerpt) sits between the title and the cover image, so the public
    post layout reads Title → Perex → Image → Main content on every viewport. */
 .detail-excerpt {
@@ -1097,27 +1103,6 @@ button {
   font-family: var(--font-display);
   font-weight: 300;
   font-size: 1.05rem;
-  color: var(--ink-dim);
-}
-
-.jewelry-badge {
-  display: inline-block;
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 1px;
-  margin-top: 0.75rem;
-}
-
-.jewelry-badge--available {
-  background: #e8f2eb;
-  color: var(--success);
-}
-
-.jewelry-badge--unavailable {
-  background: var(--bg-alt);
   color: var(--ink-dim);
 }
 

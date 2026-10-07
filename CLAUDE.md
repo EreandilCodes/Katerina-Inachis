@@ -550,7 +550,15 @@ than one image). Keep the fallback in both renderers.
 **Technika label rule:** the jewelry materials label is the i18n key
 `jewelry.materials` — "Technika" (cs) / "Technique" (en) in
 `frontend/js/i18n.js`, and the admin form field in `frontend/admin.html` is
-labeled "Technika" too. If the wording ever changes, change all three places.
+labeled "Technika" too. On the drawing detail the line renders italic
+(`.detail-page--drawing .text-content p.text-tech`) as the artwork's method
+caption. If the wording ever changes, change all three places.
+
+**No availability badge in Kresba a malba:** the public section shows no
+"Dostupné"/"Nedostupné" badge — `.jewelry-badge*` (and its CSS) was removed
+from `renderJewelryItem` and `renderJewelryDetail`. `is_available` stays only
+as an admin flag/table column; do not re-add the badge to the public section
+without being asked.
 
 **Kresba a malba typeface rule:** the section is set in the display serif
 (`var(--font-display)` = EB Garamond), the same face the stories use for their
