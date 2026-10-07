@@ -714,6 +714,10 @@ async function renderArtworkDetail(slug) {
     const a = await safeFetch(`/api/artworks/${encodeURIComponent(slug)}` + langParam());
     let images = [];
     try { images = JSON.parse(a.images_json || '[]'); } catch {}
+    // The cover can be left empty when the admin picked the image into the
+    // carousel list (`images_json`) — fall back to the first image so an
+    // artwork is never invisible just because cover_image is null.
+    const cover = a.cover_image || (Array.isArray(images) && images.length ? images[0] : null);
 
     app.setContent(`
       <div class="detail-page detail-page--gallery">
@@ -726,7 +730,7 @@ async function renderArtworkDetail(slug) {
             ${a.medium || a.year ? `<div class="detail-meta">${[a.medium, a.year].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
           </div>
           ${detailTagsHtml(a.tags)}
-          ${a.cover_image ? `<div class="detail-cover">${detailCoverImgHtml(a.cover_image, a.title)}</div>` : ''}
+          ${cover ? `<div class="detail-cover">${detailCoverImgHtml(cover, a.title)}</div>` : ''}
           ${a.description ? `<div class="text-content"><p>${esc(a.description)}</p></div>` : ''}
           ${images.length > 1 ? `
           <div class="carousel" style="margin-top:3rem;max-width:900px;margin-left:auto;margin-right:auto">
@@ -780,6 +784,10 @@ async function renderJewelryDetail(slug) {
     const j = await safeFetch(`/api/jewelry/${encodeURIComponent(slug)}` + langParam());
     let images = [];
     try { images = JSON.parse(j.images_json || '[]'); } catch {}
+    // The cover can be left empty when the admin picked the image into the
+    // carousel list (`images_json`) — fall back to the first image so the
+    // artwork is never invisible just because cover_image is null.
+    const cover = j.cover_image || (Array.isArray(images) && images.length ? images[0] : null);
 
     app.setContent(`
       <div class="detail-page detail-page--drawing">
@@ -791,7 +799,7 @@ async function renderJewelryDetail(slug) {
             <hr class="ornament-line">
           </div>
           ${detailTagsHtml(j.tags)}
-          ${j.cover_image ? `<div class="detail-cover" style="max-width:600px;aspect-ratio:1">${detailCoverImgHtml(j.cover_image, j.title)}</div>` : ''}
+          ${cover ? `<div class="detail-cover" style="max-width:600px">${detailCoverImgHtml(cover, j.title)}</div>` : ''}
           <div class="text-content" style="margin-top:2rem">
             ${j.description ? `<p>${esc(j.description)}</p>` : ''}
             ${j.materials ? `<p><strong>${i('jewelry.materials')}:</strong> ${esc(j.materials)}</p>` : ''}

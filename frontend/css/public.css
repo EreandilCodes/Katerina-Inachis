@@ -768,6 +768,17 @@ button {
   object-fit: contain;
 }
 
+/* Kresba a malba detail renders its artwork image WHOLE too — the square/4/3
+   cover boxes do not apply to an artwork the author picked from the Galerie. */
+.detail-page--drawing .detail-cover {
+  aspect-ratio: auto;
+}
+
+.detail-page--drawing .detail-cover img {
+  height: auto;
+  object-fit: contain;
+}
+
 /* Perex (excerpt) sits between the title and the cover image, so the public
    post layout reads Title → Perex → Image → Main content on every viewport. */
 .detail-excerpt {

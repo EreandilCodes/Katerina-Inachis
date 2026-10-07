@@ -85,7 +85,7 @@ const translations = {
     'contact.error.messageLong': 'Zpráva je příliš dlouhá (max 5000 znaků).',
 
     // Jewelry / detail
-    'jewelry.materials': 'Materiály',
+    'jewelry.materials': 'Technika',
     'jewelry.dimensions': 'Rozměry',
     'jewelry.available': 'Dostupné',
     'jewelry.currentlyUnavailable': 'Momentálně nedostupné',
@@ -190,7 +190,7 @@ const translations = {
     'contact.error.messageLong': 'Message is too long (max 5000 characters).',
 
     // Jewelry / detail
-    'jewelry.materials': 'Materials',
+    'jewelry.materials': 'Technique',
     'jewelry.dimensions': 'Dimensions',
     'jewelry.available': 'Available',
     'jewelry.currentlyUnavailable': 'Currently unavailable',

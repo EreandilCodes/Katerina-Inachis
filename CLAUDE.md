@@ -530,9 +530,27 @@ stay top-aligned (`.gallery-grid { align-items: start }`, `.scroll-row >
 .gallery-item { align-self: flex-start }`) so an uncropped tile never grows a
 strip of background under itself, and a tile is exactly as tall as its own
 picture. Cropping stays **opt-in, per placement**: the ratio boxes that are
-left (`.card-img` 3:2, `.jewelry-item__img` 1:1, `.detail-cover` 4/3 outside
-the Galerie) are thumbnails, and that is where cropping is allowed. Whole must
-not mean heavy — the Galerie tiles load through `thumbUrl(..., 800)`.
+left (`.card-img` 3:2, `.jewelry-item__img` 1:1) are thumbnails, and that is
+where cropping is allowed. The `.detail-cover` boxes of *content* pages are
+overridden to `aspect-ratio: auto` + `object-fit: contain` in **both** the
+Galerie (`.detail-page--gallery`) and Kresba a malba (`.detail-page--drawing`)
+— an artwork picked from the Galerie is shown whole there, never as a 4/3 or
+1:1 crop. Whole must not mean heavy — the Galerie tiles load through
+`thumbUrl(..., 800)`, the Galerie/Kresba detail covers through
+`thumbUrl(src, 1600)`, carousels through the same 1600 thumb.
+
+**Cover fallback rule (do not regress):** `renderArtworkDetail` and
+`renderJewelryDetail` derive the cover as
+`item.cover_image || images_json[0]`. The admin lets the author "pick from
+the Galerie", which fills `images_json`; `cover_image` can stay `null` while
+the artwork is visible only through that fallback — without it the picture is
+invisible (no cover block, and the carousel only renders when there is more
+than one image). Keep the fallback in both renderers.
+
+**Technika label rule:** the jewelry materials label is the i18n key
+`jewelry.materials` — "Technika" (cs) / "Technique" (en) in
+`frontend/js/i18n.js`, and the admin form field in `frontend/admin.html` is
+labeled "Technika" too. If the wording ever changes, change all three places.
 
 **Kresba a malba typeface rule:** the section is set in the display serif
 (`var(--font-display)` = EB Garamond), the same face the stories use for their
